@@ -51,8 +51,10 @@ export async function getStorefront(slug: string) {
   "use cache";
   cacheLife("hours");
   cacheTag(shopTag(slug));
-  const shop = await getShop(slug);
-  if (!shop) return null;
+  const row = await getShop(slug);
+  if (!row) return null;
+  const { integrations: _secret, ...shop } = row; // ห้ามส่ง token ไปหน้าร้าน
+  void _secret;
   return { shop, ...(await loadCatalog(shop.id)) };
 }
 

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { adminOrders, adminShop } from "@/lib/admin-data";
 import { baht } from "@/lib/pricing";
 import { OrderBoard } from "@/components/admin/OrderBoard";
-import { AutoRefresh } from "@/components/AutoRefresh";
+import { LiveRefresh } from "@/components/LiveRefresh";
 
 export default function Page({ params }: PageProps<"/admin/[shop]">) {
   return <Suspense fallback={<div className="h-40 animate-pulse rounded-2xl bg-white" />}><Dashboard params={params} /></Suspense>;
@@ -11,7 +11,7 @@ export default function Page({ params }: PageProps<"/admin/[shop]">) {
 
 async function Dashboard({ params }: { params: PageProps<"/admin/[shop]">["params"] }) {
   const { shop: slug } = await params;
-  const shop = await adminShop(slug);
+  const shop = await adminShop(slug, "dashboard");
   const since = new Date(); since.setHours(0, 0, 0, 0);
   const today = await adminOrders(shop.id, { since, limit: 500 });
   const valid = today.filter((o) => o.status !== "cancelled");
@@ -29,7 +29,7 @@ async function Dashboard({ params }: { params: PageProps<"/admin/[shop]">["param
 
   return (
     <>
-      <AutoRefresh ms={10000} />
+      <LiveRefresh url={`/api/admin/${slug}/events`} />
       <h1 className="font-display text-2xl font-semibold">{shop.name}</h1>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {stats.map(([k, v]) => (

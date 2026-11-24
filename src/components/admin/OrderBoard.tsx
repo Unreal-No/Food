@@ -6,7 +6,7 @@ import type { OrderStatus } from "@/db/schema";
 import { btnDanger, btnPrimary, useAction } from "./ui";
 
 type Order = {
-  id: string; code: string; status: OrderStatus; channel: string; tableCode: string; customerName: string;
+  id: string; code: string; status: OrderStatus; channel: string; payment: string; tableCode: string; customerName: string;
   customerPhone: string; note: string; total: number; createdAt: Date;
   items: { id: string; name: string; variantName: string; options: { name: string }[]; qty: number }[];
 };
@@ -29,7 +29,7 @@ function OrderCard({ o, slug }: { o: Order; slug: string }) {
         <div>
           <p className="text-lg font-bold">#{o.code}</p>
           <p className="text-xs text-stone-500">
-            {o.channel === "dine_in" ? `โต๊ะ ${o.tableCode}` : "กลับบ้าน"} · {o.customerName} · {new Date(o.createdAt).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })}
+            {o.channel === "dine_in" ? `โต๊ะ ${o.tableCode}` : "กลับบ้าน"} · {o.payment === "counter" ? "💵 เคาน์เตอร์" : "📱 PromptPay"} · {o.customerName} · {new Date(o.createdAt).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })}
           </p>
         </div>
         <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${TONE[o.status]}`}>{STATUS_LABEL[o.status]}</span>

@@ -1,4 +1,6 @@
-import { shops, categories, products, productVariants, optionGroups, options, productOptionGroups } from "./schema";
+import { randomBytes } from "node:crypto";
+import { shops, categories, products, productVariants, optionGroups, options, productOptionGroups, staff, tables } from "./schema";
+import { hashPassword } from "@/lib/password";
 import type { DB } from "./index";
 import type { Media, Visual } from "./schema";
 
@@ -12,6 +14,7 @@ type SeedShop = {
   slug: string; name: string; type: "cafe" | "restaurant"; tagline: string; promptpayId: string;
   theme: typeof shops.$inferInsert["theme"]; hours: typeof shops.$inferInsert["hours"];
   categories: [string, string][];
+  staff: [string, string, string, "owner" | "manager" | "cashier" | "kitchen"][]; // ชื่อ, username, รหัส, บทบาท
   groups: { name: string; min: number; max: number; opts: [string, number, boolean?, Visual?][] }[];
   products: SeedProduct[];
 };
@@ -23,6 +26,7 @@ const DATA: SeedShop[] = [
     theme: { primary: "#6b3e26", accent: "#d9a066", bg: "#f7f1e8", surface: "#fffaf3", text: "#2a1a12", font: "classic", heroEmoji: "☕" },
     hours: { open: "07:00", close: "18:00", days: [0, 1, 2, 3, 4, 5, 6] },
     categories: [["กาแฟ", "☕"], ["ชา & นม", "🍵"], ["เบเกอรี่", "🥐"]],
+    staff: [["เจ้าของร้าน", "mellow", "mellow1234", "owner"], ["บาริสต้า", "mellow-kitchen", "kitchen1234", "kitchen"]],
     groups: [
       { name: "ความหวาน", min: 1, max: 1, opts: [["ไม่หวาน", 0], ["หวานน้อย", 0], ["หวานปกติ", 0, true], ["หวานมาก", 0]] },
       { name: "นม", min: 1, max: 1, opts: [["นมวัว", 0, true], ["นมโอ๊ต", 15], ["นมอัลมอนด์", 15]] },
@@ -53,6 +57,7 @@ const DATA: SeedShop[] = [
     theme: { primary: "#c2410c", accent: "#facc15", bg: "#fff7ed", surface: "#ffffff", text: "#1c1917", font: "modern", heroEmoji: "🍳" },
     hours: { open: "10:00", close: "21:00", days: [1, 2, 3, 4, 5, 6] },
     categories: [["จานเดียว", "🍛"], ["ต้ม & แกง", "🍲"], ["เครื่องดื่ม", "🥤"]],
+    staff: [["เจ้าของร้าน", "baansom", "baansom1234", "owner"], ["แคชเชียร์", "baansom-cashier", "cashier1234", "cashier"]],
     groups: [
       { name: "ความเผ็ด", min: 1, max: 1, opts: [["ไม่เผ็ด", 0], ["เผ็ดน้อย", 0], ["เผ็ดกลาง", 0, true], ["เผ็ดมาก", 0]] },
       { name: "ไข่", min: 0, max: 2, opts: [["ไข่ดาว", 10, false, { show: ["egg"] }], ["ไข่ดาวไม่สุก", 10, false, { show: ["egg"] }], ["ไข่เจียว", 15, false, { show: ["omelet"] }]] },
@@ -80,6 +85,11 @@ export async function seedIfEmpty(db: DB) {
       slug: s.slug, name: s.name, type: s.type, tagline: s.tagline,
       promptpayId: s.promptpayId, theme: s.theme, hours: s.hours,
     }).returning();
+
+    for (const [name, username, pw, role] of s.staff) {
+      await db.insert(staff).values({ shopId: shop.id, name, username, role, passwordHash: await hashPassword(pw) });
+    }
+    await db.insert(tables).values(["A1", "A2", "A3", "B1", "B2"].map((code) => ({ shopId: shop.id, code, token: randomBytes(12).toString("base64url") })));
 
     const cats = await db.insert(categories)
       .values(s.categories.map(([name, icon], i) => ({ shopId: shop.id, name, icon, sort: i })))

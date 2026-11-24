@@ -8,6 +8,7 @@ import { MediaView } from "@/components/media/MediaView";
 import { has3D, selectionVisual } from "@/lib/visual";
 import { clearHash, getHash, hasWebGL, noopSubscribe, subscribeHash } from "@/lib/browser";
 import { WalkIn, type WalkData } from "./WalkIn";
+import { lookupTable } from "@/app/admin/actions";
 export { ProductStage };
 
 type Category = { id: string; name: string; icon: string };
@@ -204,6 +205,14 @@ export function CartPanel({ shop, onClose }: { shop: string; onClose: () => void
 /* ---------- หน้าร้าน ---------- */
 export function Storefront({ shop, categories, products, walk }: { shop: string; categories: Category[]; products: CatalogProduct[]; walk?: WalkData }) {
   const walking = useSyncExternalStore(subscribeHash, getHash, () => "") === "#walk";
+  // สแกน QR โต๊ะ (?t=token) → ตรวจกับ server แล้วจำโต๊ะไว้ในตะกร้า
+  const qrToken = useSyncExternalStore(noopSubscribe, () => new URLSearchParams(location.search).get("t"), () => null);
+  const table = useCart((s) => s.tables[shop]);
+  const setTable = useCart((s) => s.setTable);
+  useEffect(() => {
+    if (!qrToken || table?.token === qrToken) return;
+    lookupTable(shop, qrToken).then((code) => setTable(shop, code ? { token: qrToken, code } : undefined));
+  }, [qrToken, shop, table?.token, setTable]);
   const gl = useSyncExternalStore(noopSubscribe, hasWebGL, () => false);
   const [openId, setOpenId] = useState<string | null>(null);
   const [cartOpen, setCartOpen] = useState(false);
@@ -242,6 +251,14 @@ export function Storefront({ shop, categories, products, walk }: { shop: string;
         </div>
       </nav>
 
+      {hydrated && table && (
+        <div className="sticky top-[57px] z-20 border-b border-black/5 bg-accent/90 backdrop-blur">
+          <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-2 text-sm text-ink">
+            <span className="text-lg">🪑</span><span><b>โต๊ะ {table.code}</b> · สั่งได้เลย ออเดอร์ส่งเข้าครัวพร้อมเลขโต๊ะ</span>
+            <span className="flex-1" /><button className="text-xs underline opacity-70" onClick={() => setTable(shop, undefined)}>ไม่ใช่โต๊ะนี้</button>
+          </div>
+        </div>
+      )}
       <main className="mx-auto max-w-6xl px-4 pb-32">
         {walk && gl && (
           <a href="#walk" className="group relative mt-8 flex items-center gap-5 overflow-hidden rounded-[28px] bg-ink p-5 text-card shadow-xl transition hover:-translate-y-0.5 sm:p-6">

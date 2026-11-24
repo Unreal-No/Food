@@ -1,13 +1,16 @@
 "use client";
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
+import type { Perm } from "@/lib/perms";
+import { logout } from "@/app/admin/actions";
 
-const NAV = [
-  ["", "📊", "ภาพรวม"], ["/orders", "🧾", "ออเดอร์"], ["/products", "🍰", "สินค้า"],
-  ["/options", "🧩", "ตัวเลือกเสริม"], ["/scene", "🏬", "ฉากร้าน 3D"], ["/settings", "🎨", "ตั้งค่าร้าน"],
-] as const;
+const NAV: [string, string, string, Perm][] = [
+  ["", "📊", "ภาพรวม", "dashboard"], ["/orders", "🧾", "ออเดอร์", "orders"], ["/kitchen", "👨‍🍳", "จอครัว", "kitchen"],
+  ["/products", "🍰", "สินค้า", "catalog"], ["/options", "🧩", "ตัวเลือกเสริม", "catalog"], ["/scene", "🏬", "ฉากร้าน 3D", "scene"],
+  ["/tables", "🪑", "โต๊ะ & QR", "tables"], ["/staff", "👥", "พนักงาน", "staff"], ["/settings", "🎨", "ตั้งค่าร้าน", "settings"],
+];
 
-export function AdminNav() {
+export function AdminNav({ perms, who }: { perms: Perm[]; who: string }) {
   const { shop } = useParams<{ shop: string }>();
   const path = usePathname();
   const base = `/admin/${shop}`;
@@ -18,7 +21,7 @@ export function AdminNav() {
         <p className="font-semibold md:mt-2">/{shop}</p>
       </div>
       <nav className="no-scrollbar flex gap-1 overflow-x-auto px-2 pb-2 md:flex-col md:px-3">
-        {NAV.map(([href, icon, label]) => {
+        {NAV.filter((n) => perms.includes(n[3])).map(([href, icon, label]) => {
           const to = base + href;
           const on = href ? path.startsWith(to) : path === base;
           return (
@@ -28,6 +31,7 @@ export function AdminNav() {
           );
         })}
         <Link href={`/${shop}`} target="_blank" className="flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-sm text-stone-600 hover:bg-black/5 md:mt-4">↗ ดูหน้าร้าน</Link>
+        <form action={logout} className="shrink-0 md:mt-2"><button className="w-full rounded-xl px-3 py-2 text-left text-sm text-stone-500 hover:bg-black/5">⎋ ออก ({who})</button></form>
       </nav>
     </aside>
   );

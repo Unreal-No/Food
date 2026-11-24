@@ -9,7 +9,7 @@ export default function Page({ params }: PageProps<"/admin/[shop]/scene">) {
 
 async function Scene({ params }: { params: PageProps<"/admin/[shop]/scene">["params"] }) {
   const { shop: slug } = await params;
-  const { shop, products } = await adminCatalog(slug);
+  const { shop, products } = await adminCatalog(slug, "scene");
   return (
     <>
       <div>

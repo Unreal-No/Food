@@ -10,6 +10,8 @@ export type ShopTheme = {
 };
 // ฉากร้าน 3D: แม่แบบ + สี + การจัดวาง (slots[i] = productId · "" = อัตโนมัติ · "-" = เว้นว่าง)
 export type SceneConfig = { template?: "cafe" | "restaurant" | "retail"; wall?: string; floor?: string; slots?: string[] };
+// การเชื่อมต่อภายนอก (เก็บฝั่ง server เท่านั้น ห้ามส่งไป client)
+export type Integrations = { lineToken?: string; lineTo?: string };
 export type ShopHours = { open: string; close: string; days: number[] }; // days: 0=อา.
 // สื่อหลักของสินค้า: preset = โมเดล 3D สำเร็จรูป (ไม่ต้องมีไฟล์), glb = ไฟล์ 3D, turntable = ภาพหมุน 360°
 export type Media =
@@ -30,6 +32,7 @@ export const shops = pgTable("shops", {
   hours: jsonb("hours").$type<ShopHours>().notNull(),
   promptpayId: text("promptpay_id").notNull().default(""),
   scene: jsonb("scene").$type<SceneConfig>().notNull().default({}),
+  integrations: jsonb("integrations").$type<Integrations>().notNull().default({}),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -100,6 +103,7 @@ export const orders = pgTable("orders", {
   shopId: uuid("shop_id").notNull().references(() => shops.id, { onDelete: "cascade" }),
   code: text("code").notNull(),
   channel: text("channel").$type<"dine_in" | "takeaway">().notNull(),
+  payment: text("payment").$type<"promptpay" | "counter">().notNull().default("promptpay"),
   tableCode: text("table_code").notNull().default(""),
   customerName: text("customer_name").notNull().default(""),
   customerPhone: text("customer_phone").notNull().default(""),
@@ -121,3 +125,24 @@ export const orderItems = pgTable("order_items", {
   unitPrice: integer("unit_price").notNull(),
   note: text("note").notNull().default(""),
 });
+
+// โต๊ะสำหรับสั่งผ่าน QR (token อยู่ใน URL ของ QR)
+export const tables = pgTable("tables", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  shopId: uuid("shop_id").notNull().references(() => shops.id, { onDelete: "cascade" }),
+  code: text("code").notNull(),
+  token: text("token").notNull().unique(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index("tables_shop_idx").on(t.shopId)]);
+
+export type Role = "owner" | "manager" | "cashier" | "kitchen";
+export const staff = pgTable("staff", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  shopId: uuid("shop_id").notNull().references(() => shops.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  username: text("username").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  role: text("role").$type<Role>().notNull(),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index("staff_shop_idx").on(t.shopId)]);

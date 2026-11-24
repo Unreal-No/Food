@@ -8,8 +8,11 @@ export type CartItem = {
   unitPrice: number; qty: number;
 };
 
+export type TableInfo = { token: string; code: string };
 type CartState = {
   shops: Record<string, CartItem[]>;
+  tables: Record<string, TableInfo | undefined>;
+  setTable: (shop: string, t?: TableInfo) => void;
   add: (shop: string, item: CartItem) => void;
   setQty: (shop: string, key: string, qty: number) => void;
   clear: (shop: string) => void;
@@ -20,6 +23,8 @@ export const useCartItems = (shop: string) => useCart((s) => s.shops[shop] ?? EM
 
 export const useCart = create<CartState>()(persist((set) => ({
   shops: {},
+  tables: {},
+  setTable: (shop, t) => set((s) => ({ tables: { ...s.tables, [shop]: t } })),
   add: (shop, item) => set((s) => {
     const items = s.shops[shop] ?? [];
     const found = items.find((i) => i.key === item.key);

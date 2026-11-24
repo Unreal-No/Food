@@ -9,7 +9,7 @@ import { getStorefront } from "@/lib/catalog";
 import { baht } from "@/lib/pricing";
 import { promptpayPayload } from "@/lib/promptpay";
 import { ThemeScope } from "@/components/theme";
-import { AutoRefresh } from "@/components/AutoRefresh";
+import { LiveRefresh } from "@/components/LiveRefresh";
 import { STATUS_STEPS, STATUS_LABEL } from "@/lib/status";
 
 export const metadata = { title: "คำสั่งซื้อ" };
@@ -27,14 +27,14 @@ async function Order({ params }: { params: PageProps<"/[shop]/order/[id]">["para
   const [order] = await db.select().from(s.orders).where(and(eq(s.orders.id, id), eq(s.orders.shopId, data.shop.id)));
   if (!order) notFound();
   const items = await db.select().from(s.orderItems).where(eq(s.orderItems.orderId, id));
-  const qr = order.status === "pending_payment" && data.shop.promptpayId
+  const qr = order.status === "pending_payment" && order.payment === "promptpay" && data.shop.promptpayId
     ? await QRCode.toString(promptpayPayload(data.shop.promptpayId, order.total), { type: "svg", margin: 1 })
     : null;
   const step = STATUS_STEPS.indexOf(order.status);
 
   return (
     <ThemeScope theme={data.shop.theme}>
-      <AutoRefresh ms={order.status === "completed" || order.status === "cancelled" ? 0 : 5000} />
+      {order.status !== "completed" && order.status !== "cancelled" && <LiveRefresh url={`/api/orders/${order.id}/events`} fallbackMs={20_000} />}
       <main className="mx-auto max-w-md px-4 py-8">
         <Link href={`/${slug}`} className="text-sm text-ink/55">← {data.shop.name}</Link>
         <div className="mt-4 rounded-[32px] bg-card p-6 text-center shadow-xl ring-1 ring-black/5">
@@ -55,6 +55,13 @@ async function Order({ params }: { params: PageProps<"/[shop]/order/[id]">["para
             </ol>
           )}
 
+          {order.status === "pending_payment" && order.payment === "counter" && (
+            <div className="mt-6 rounded-3xl bg-accent/25 p-5">
+              <p className="text-3xl">💵</p>
+              <p className="mt-1 font-medium">ชำระที่เคาน์เตอร์ <span className="font-display text-xl">{baht(order.total)}</span></p>
+              <p className="text-xs text-ink/55">ครัวเริ่มทำแล้ว แจ้งเลขออเดอร์ #{order.code} ตอนชำระ</p>
+            </div>
+          )}
           {qr && (
             <div className="mt-6 rounded-3xl bg-white p-4 ring-1 ring-black/5">
               <p className="text-sm font-medium text-[#113566]">สแกนจ่ายด้วย PromptPay</p>

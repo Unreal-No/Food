@@ -1,19 +1,16 @@
 import "server-only";
-import { notFound } from "next/navigation";
 import { and, desc, eq, gte, inArray } from "drizzle-orm";
 import { getDb, schema as s } from "@/db";
-import { requireAdmin } from "./auth";
-import { getShop, loadCatalog } from "./catalog";
+import { requireShop } from "./auth";
+import type { Perm } from "./perms";
+import { loadCatalog } from "./catalog";
 
-export async function adminShop(slug: string) {
-  await requireAdmin();
-  const shop = await getShop(slug);
-  if (!shop) notFound();
-  return shop;
+export async function adminShop(slug: string, perm: Perm) {
+  return (await requireShop(slug, perm)).shop;
 }
 
-export async function adminCatalog(slug: string) {
-  const shop = await adminShop(slug);
+export async function adminCatalog(slug: string, perm: Perm = "catalog") {
+  const shop = await adminShop(slug, perm);
   return { shop, ...(await loadCatalog(shop.id, true)) };
 }
 

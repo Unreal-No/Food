@@ -1,12 +1,17 @@
 "use server";
 import { z } from "zod";
-import { and, eq, inArray, notInArray } from "drizzle-orm";
+import { and, eq, inArray, ne, notInArray } from "drizzle-orm";
 import { redirect, unstable_rethrow } from "next/navigation";
 import { updateTag } from "next/cache";
-import { getDb, schema as s } from "@/db";
-import { getShop, shopTag } from "@/lib/catalog";
-import { endSession, requireAdmin, startSession } from "@/lib/auth";
+import { after } from "next/server";
+import { getDb, publish, schema as s } from "@/db";
+import { shopTag } from "@/lib/catalog";
+import { can, login as doLogin, logoutSession, requireShop } from "@/lib/auth";
+import type { Perm } from "@/lib/perms";
 import { saveUpload } from "@/lib/storage";
+import { randomBytes } from "node:crypto";
+import { hashPassword } from "@/lib/password";
+import { notifyShop } from "@/lib/notify";
 import type { OrderStatus } from "@/db/schema";
 
 type Result = { ok: true; id?: string } | { ok: false; error: string };
@@ -23,22 +28,20 @@ const MediaSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("photo"), url: mediaUrl }),
 ]);
 
-async function ctx(slug: string) {
-  await requireAdmin();
-  const shop = await getShop(slug);
-  if (!shop) throw new Error("ไม่พบร้าน");
-  return { shop, db: await getDb() };
+async function ctx(slug: string, perm: Perm) {
+  const { ses, shop } = await requireShop(slug, perm);
+  return { ses, shop, db: await getDb() };
 }
 const fail = (e: unknown): Result => { unstable_rethrow(e); return { ok: false, error: e instanceof z.ZodError ? e.issues[0].message : e instanceof Error ? e.message : "ผิดพลาด" }; };
 const done = (slug: string, id?: string): Result => { updateTag(shopTag(slug)); return { ok: true, id }; };
 
 /* ---------- auth ---------- */
 export async function login(_: unknown, fd: FormData) {
-  if (!(await startSession(String(fd.get("password") ?? "")))) return { error: "รหัสผ่านไม่ถูกต้อง" };
+  if (!(await doLogin(String(fd.get("username") ?? ""), String(fd.get("password") ?? "")))) return { error: "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง" };
   redirect("/admin");
 }
 export async function logout() {
-  await endSession();
+  await logoutSession();
   redirect("/admin/login");
 }
 
@@ -54,7 +57,7 @@ const ProductInput = z.object({
 
 export async function saveProduct(slug: string, raw: unknown): Promise<Result> {
   try {
-    const { shop, db } = await ctx(slug);
+    const { shop, db } = await ctx(slug, "catalog");
     const d = ProductInput.parse(raw);
     const id = await db.transaction(async (tx) => {
       const fields = {
@@ -91,7 +94,7 @@ export async function saveProduct(slug: string, raw: unknown): Promise<Result> {
 
 export async function setProductStatus(slug: string, id: string, status: "active" | "hidden" | "soldout"): Promise<Result> {
   try {
-    const { shop, db } = await ctx(slug);
+    const { shop, db } = await ctx(slug, "catalog");
     await db.update(s.products).set({ status: z.enum(["active", "hidden", "soldout"]).parse(status) }).where(and(eq(s.products.id, id), eq(s.products.shopId, shop.id)));
     return done(slug);
   } catch (e) { return fail(e); }
@@ -99,7 +102,7 @@ export async function setProductStatus(slug: string, id: string, status: "active
 
 export async function deleteProduct(slug: string, id: string): Promise<Result> {
   try {
-    const { shop, db } = await ctx(slug);
+    const { shop, db } = await ctx(slug, "catalog");
     await db.delete(s.products).where(and(eq(s.products.id, id), eq(s.products.shopId, shop.id)));
     return done(slug);
   } catch (e) { return fail(e); }
@@ -109,7 +112,7 @@ export async function deleteProduct(slug: string, id: string): Promise<Result> {
 const LIMIT: Record<string, number> = { glb: 15e6, image: 3e6 };
 export async function uploadMedia(slug: string, fd: FormData): Promise<Result & { url?: string }> {
   try {
-    const { shop } = await ctx(slug);
+    const { shop } = await ctx(slug, "catalog");
     const file = fd.get("file");
     if (!(file instanceof File) || !file.size) throw new Error("ไม่พบไฟล์");
     const kind = file.name.toLowerCase().endsWith(".glb") ? "glb" : "image";
@@ -121,7 +124,7 @@ export async function uploadMedia(slug: string, fd: FormData): Promise<Result & 
 /* ---------- หมวดหมู่ ---------- */
 export async function saveCategory(slug: string, raw: unknown): Promise<Result> {
   try {
-    const { shop, db } = await ctx(slug);
+    const { shop, db } = await ctx(slug, "catalog");
     const d = z.object({ id: opt, name: z.string().trim().min(1, "กรุณาใส่ชื่อหมวด").max(40), icon: z.string().max(8), sort: z.number().int() }).parse(raw);
     if (d.id) await db.update(s.categories).set(d).where(and(eq(s.categories.id, d.id), eq(s.categories.shopId, shop.id)));
     else await db.insert(s.categories).values({ ...d, shopId: shop.id });
@@ -131,7 +134,7 @@ export async function saveCategory(slug: string, raw: unknown): Promise<Result> 
 
 export async function deleteCategory(slug: string, id: string): Promise<Result> {
   try {
-    const { shop, db } = await ctx(slug);
+    const { shop, db } = await ctx(slug, "catalog");
     await db.delete(s.categories).where(and(eq(s.categories.id, id), eq(s.categories.shopId, shop.id)));
     return done(slug);
   } catch (e) { return fail(e); }
@@ -146,7 +149,7 @@ const GroupInput = z.object({
 
 export async function saveOptionGroup(slug: string, raw: unknown): Promise<Result> {
   try {
-    const { shop, db } = await ctx(slug);
+    const { shop, db } = await ctx(slug, "catalog");
     const d = GroupInput.parse(raw);
     const id = await db.transaction(async (tx) => {
       const fields = { name: d.name, minSelect: d.minSelect, maxSelect: d.maxSelect };
@@ -172,7 +175,7 @@ export async function saveOptionGroup(slug: string, raw: unknown): Promise<Resul
 
 export async function deleteOptionGroup(slug: string, id: string): Promise<Result> {
   try {
-    const { shop, db } = await ctx(slug);
+    const { shop, db } = await ctx(slug, "catalog");
     await db.delete(s.optionGroups).where(and(eq(s.optionGroups.id, id), eq(s.optionGroups.shopId, shop.id)));
     return done(slug);
   } catch (e) { return fail(e); }
@@ -190,7 +193,7 @@ const SettingsInput = z.object({
 
 export async function saveSettings(slug: string, raw: unknown): Promise<Result> {
   try {
-    const { shop, db } = await ctx(slug);
+    const { shop, db } = await ctx(slug, "settings");
     await db.update(s.shops).set(SettingsInput.parse(raw)).where(eq(s.shops.id, shop.id));
     updateTag("shops");
     return done(slug);
@@ -204,7 +207,7 @@ const SceneInput = z.object({
 });
 export async function saveScene(slug: string, raw: unknown): Promise<Result> {
   try {
-    const { shop, db } = await ctx(slug);
+    const { shop, db } = await ctx(slug, "scene");
     await db.update(s.shops).set({ scene: SceneInput.parse(raw) }).where(eq(s.shops.id, shop.id));
     return done(slug);
   } catch (e) { return fail(e); }
@@ -213,9 +216,114 @@ export async function saveScene(slug: string, raw: unknown): Promise<Result> {
 /* ---------- ออเดอร์ ---------- */
 export async function setOrderStatus(slug: string, id: string, status: OrderStatus): Promise<Result> {
   try {
-    const { shop, db } = await ctx(slug);
     const st = z.enum(["pending_payment", "paid", "preparing", "ready", "completed", "cancelled"]).parse(status);
-    await db.update(s.orders).set({ status: st }).where(and(eq(s.orders.id, id), eq(s.orders.shopId, shop.id)));
+    const { ses, shop, db } = await ctx(slug, "kitchen");
+    if (!can(ses, "orders") && st !== "preparing" && st !== "ready") throw new Error("ครัวเปลี่ยนได้เฉพาะ กำลังทำ/พร้อมเสิร์ฟ");
+    const [o] = await db.update(s.orders).set({ status: st }).where(and(eq(s.orders.id, id), eq(s.orders.shopId, shop.id))).returning({ code: s.orders.code });
+    if (!o) throw new Error("ไม่พบออเดอร์");
+    await publish({ type: "order", shopId: shop.id, orderId: id, status: st, code: o.code });
+    if (st === "paid") after(() => notifyShop(shop.id, `💰 รับเงินแล้ว #${o.code}`));
     return { ok: true };
   } catch (e) { return fail(e); }
+}
+
+/* ---------- โต๊ะ & QR ---------- */
+const token = () => randomBytes(12).toString("base64url");
+/** "A1-A6, B1, VIP" → ["A1".."A6","B1","VIP"] */
+function parseCodes(raw: string) {
+  return raw.split(/[,\s]+/).filter(Boolean).flatMap((part) => {
+    const m = part.match(/^([A-Za-z]*)(\d+)-\1?(\d+)$/);
+    if (!m) return [part];
+    const [a, b] = [Number(m[2]), Number(m[3])].sort((x, y) => x - y);
+    return Array.from({ length: Math.min(b - a + 1, 100) }, (_, i) => `${m[1]}${a + i}`);
+  }).map((c) => c.toUpperCase().slice(0, 10));
+}
+export async function addTables(slug: string, raw: string): Promise<Result> {
+  try {
+    const { shop, db } = await ctx(slug, "tables");
+    const codes = [...new Set(parseCodes(z.string().max(500).parse(raw)))];
+    if (!codes.length || codes.length > 100) throw new Error("ใส่เลขโต๊ะ 1–100 โต๊ะ เช่น A1-A6, B1");
+    const have = new Set((await db.select({ c: s.tables.code }).from(s.tables).where(eq(s.tables.shopId, shop.id))).map((r) => r.c));
+    const add = codes.filter((c) => !have.has(c));
+    if (add.length) await db.insert(s.tables).values(add.map((code) => ({ shopId: shop.id, code, token: token() })));
+    return { ok: true };
+  } catch (e) { return fail(e); }
+}
+export async function deleteTable(slug: string, id: string): Promise<Result> {
+  try {
+    const { shop, db } = await ctx(slug, "tables");
+    await db.delete(s.tables).where(and(eq(s.tables.id, id), eq(s.tables.shopId, shop.id)));
+    return { ok: true };
+  } catch (e) { return fail(e); }
+}
+/** เปลี่ยน QR (QR เก่าใช้ไม่ได้ทันที) */
+export async function rotateTable(slug: string, id: string): Promise<Result> {
+  try {
+    const { shop, db } = await ctx(slug, "tables");
+    await db.update(s.tables).set({ token: token() }).where(and(eq(s.tables.id, id), eq(s.tables.shopId, shop.id)));
+    return { ok: true };
+  } catch (e) { return fail(e); }
+}
+
+/* ---------- พนักงาน ---------- */
+const StaffInput = z.object({
+  id: opt, name: z.string().trim().min(1, "กรุณาใส่ชื่อ").max(40),
+  username: z.string().trim().toLowerCase().regex(/^[a-z0-9._-]{3,32}$/, "ชื่อผู้ใช้ a-z 0-9 . _ - (3–32 ตัว)").refine((u) => u !== "admin", "ห้ามใช้ชื่อ admin"),
+  password: z.string().max(72).optional(),
+  role: z.enum(["owner", "manager", "cashier", "kitchen"]), active: z.boolean(),
+});
+export async function saveStaff(slug: string, raw: unknown): Promise<Result> {
+  try {
+    const { ses, shop, db } = await ctx(slug, "staff");
+    const d = StaffInput.parse(raw);
+    if (d.password && d.password.length < 8) throw new Error("รหัสผ่านอย่างน้อย 8 ตัว");
+    const [dup] = await db.select({ id: s.staff.id }).from(s.staff).where(and(eq(s.staff.username, d.username), d.id ? ne(s.staff.id, d.id) : undefined));
+    if (dup) throw new Error("ชื่อผู้ใช้นี้ถูกใช้แล้ว");
+    const self = !ses.super && ses.id === d.id;
+    const fields = { name: d.name, username: d.username, ...(self ? {} : { role: d.role, active: d.active }), ...(d.password ? { passwordHash: await hashPassword(d.password) } : {}) };
+    if (d.id) {
+      const r = await db.update(s.staff).set(fields).where(and(eq(s.staff.id, d.id), eq(s.staff.shopId, shop.id))).returning({ id: s.staff.id });
+      if (!r.length) throw new Error("ไม่พบพนักงาน");
+    } else {
+      if (!d.password) throw new Error("กรุณาตั้งรหัสผ่าน");
+      await db.insert(s.staff).values({ shopId: shop.id, name: d.name, username: d.username, role: d.role, active: d.active, passwordHash: await hashPassword(d.password) });
+    }
+    return { ok: true };
+  } catch (e) { return fail(e); }
+}
+export async function deleteStaff(slug: string, id: string): Promise<Result> {
+  try {
+    const { ses, shop, db } = await ctx(slug, "staff");
+    if (!ses.super && ses.id === id) throw new Error("ลบบัญชีตัวเองไม่ได้");
+    await db.delete(s.staff).where(and(eq(s.staff.id, id), eq(s.staff.shopId, shop.id)));
+    return { ok: true };
+  } catch (e) { return fail(e); }
+}
+
+/* ---------- LINE แจ้งเตือน (token เก็บฝั่ง server เท่านั้น) ---------- */
+export async function saveLine(slug: string, raw: unknown): Promise<Result> {
+  try {
+    const { shop, db } = await ctx(slug, "settings");
+    const d = z.object({ lineTo: z.string().trim().max(64), lineToken: z.string().trim().max(400).optional(), clear: z.boolean().optional() }).parse(raw);
+    const cur = shop.integrations ?? {};
+    const next = d.clear ? {} : { ...cur, lineTo: d.lineTo, ...(d.lineToken ? { lineToken: d.lineToken } : {}) };
+    await db.update(s.shops).set({ integrations: next }).where(eq(s.shops.id, shop.id));
+    return { ok: true };
+  } catch (e) { return fail(e); }
+}
+export async function testLine(slug: string): Promise<Result> {
+  try {
+    const { shop } = await ctx(slug, "settings");
+    if (!(await notifyShop(shop.id, `✅ ทดสอบแจ้งเตือนจาก ${shop.name}`))) throw new Error("ส่งไม่สำเร็จ ตรวจ token / ผู้รับ");
+    return { ok: true };
+  } catch (e) { return fail(e); }
+}
+
+/* ---------- หน้าร้าน: ตรวจ QR โต๊ะ (สาธารณะ) ---------- */
+export async function lookupTable(slug: string, tableToken: string) {
+  if (!/^[A-Za-z0-9_-]{8,64}$/.test(tableToken)) return null;
+  const db = await getDb();
+  const [t] = await db.select({ code: s.tables.code }).from(s.tables).innerJoin(s.shops, eq(s.shops.id, s.tables.shopId))
+    .where(and(eq(s.tables.token, tableToken), eq(s.shops.slug, slug)));
+  return t?.code ?? null;
 }

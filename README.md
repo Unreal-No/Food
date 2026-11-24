@@ -13,7 +13,15 @@ npm run dev        # http://localhost:3000  (สร้าง DB + ข้อม�
 |---|---|
 | รวมร้าน | `/` |
 | หน้าร้าน | `/mellow-bean`, `/baan-som` |
-| หลังบ้าน | `/admin` (รหัส dev: `admin`) |
+| หลังบ้าน | `/admin` |
+
+### บัญชีทดลอง (dev)
+| ชื่อผู้ใช้ | รหัส | บทบาท |
+|---|---|---|
+| `admin` | `admin` (หรือ `ADMIN_PASSWORD`) | ผู้ดูแลระบบ ทุกร้าน |
+| `mellow` / `baansom` | `mellow1234` / `baansom1234` | เจ้าของร้าน |
+| `mellow-kitchen` | `kitchen1234` | ครัว (เห็นแค่จอครัว) |
+| `baansom-cashier` | `cashier1234` | แคชเชียร์ |
 
 ## ทำแล้ว (P0)
 - หน้าร้านตามธีมของร้าน, หมวดหมู่ + scroll-spy, การ์ดเอียงตามเมาส์
@@ -40,8 +48,16 @@ npm run dev        # http://localhost:3000  (สร้าง DB + ข้อม�
 - หลังบ้าน **ฉากร้าน 3D**: เลือกแม่แบบ, สีผนัง/พื้น, จัดวางสินค้ารายช่อง (อัตโนมัติ/เว้นว่าง/เลือกเอง) พร้อมพรีวิวสด
 - กระจายสินค้าทุกโซนอัตโนมัติ และเติมซ้ำให้ชั้นดูเต็ม
 
+## ทำแล้ว (P3 · หน้าร้านจริง)
+- **Realtime** ด้วย Postgres LISTEN/NOTIFY + Server-Sent Events (ใช้ได้ทั้ง PGlite และ Postgres หลายเครื่อง) — ออเดอร์ใหม่/เปลี่ยนสถานะเด้งทันที ไม่ต้องรีเฟรช
+- **จอครัว (KDS)**: รอทำ → กำลังทำ → พร้อมเสิร์ฟ, เวลารอแต่ละบิล (เหลือง 10 นาที, แดง 20 นาที), เสียงแจ้งเตือน, โหมดเต็มจอ
+- **QR สั่งจากโต๊ะ**: สร้างโต๊ะ (`A1-A6, B1`), พิมพ์ QR, เปลี่ยน QR ได้ — เลขโต๊ะผูกกับ token จาก server เท่านั้น
+- **วิธีจ่าย**: PromptPay QR หรือ จ่ายที่เคาน์เตอร์ (ครัวเริ่มทำได้ทันที)
+- **แจ้งเตือน LINE** (Messaging API) เมื่อมีออเดอร์ใหม่/รับเงิน · token เก็บฝั่ง server ไม่ส่งไป browser
+- **พนักงานแยกสิทธิ์**: เจ้าของ / ผู้จัดการ / แคชเชียร์ / ครัว · รหัสผ่าน scrypt · ไม่มีสิทธิ์ = 404
+
 ## Production
-ตั้ง `DATABASE_URL` (Supabase Postgres), `ADMIN_PASSWORD`, `AUTH_SECRET` แล้ว `npm run db:migrate && npm run build`
+ตั้ง `DATABASE_URL` (Supabase Postgres), `ADMIN_PASSWORD`, `AUTH_SECRET`, `SITE_URL` (ใช้สร้าง QR โต๊ะ) แล้ว `npm run db:migrate && npm run build`
 
 ## ถัดไป
-P1.5 บีบอัด GLB อัตโนมัติ (gltf-transform) + ย้ายไฟล์ไป Supabase Storage · P2.5 ฉากสแกนร้านจริง (Gaussian Splat) · P3 Realtime/KDS/LINE · P4 AI Barista
+P1.5 บีบอัด GLB อัตโนมัติ (gltf-transform) + ย้ายไฟล์ไป Supabase Storage · P2.5 ฉากสแกนร้านจริง (Gaussian Splat) · P4 AI Barista, อ่านรูปเมนู, สมาชิก/คูปอง, AR

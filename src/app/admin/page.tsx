@@ -1,6 +1,9 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { requireAdmin } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import { eq } from "drizzle-orm";
+import { getDb, schema as s } from "@/db";
+import { can, requireSession } from "@/lib/auth";
 import { listShops } from "@/lib/catalog";
 import { logout } from "./actions";
 
@@ -19,15 +22,20 @@ export default function Page() {
 }
 
 async function Shops() {
-  await requireAdmin();
+  const ses = await requireSession();
+  if (!ses.super) {
+    // พนักงานเข้าร้านตัวเองทันที (ครัว → จอครัว)
+    const [shop] = await (await getDb()).select({ slug: s.shops.slug }).from(s.shops).where(eq(s.shops.id, ses.shopId));
+    redirect(`/admin/${shop.slug}${can(ses, "dashboard") ? "" : "/kitchen"}`);
+  }
   const shops = await listShops();
   return (
     <ul className="mt-8 grid gap-3 sm:grid-cols-2">
-      {shops.map((s) => (
-        <li key={s.slug}>
-          <Link href={`/admin/${s.slug}`} className="flex items-center gap-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5 transition hover:shadow-md">
-            <span className="grid size-12 place-items-center rounded-xl text-2xl" style={{ background: s.theme.primary }}>{s.theme.heroEmoji}</span>
-            <span><span className="block font-semibold">{s.name}</span><span className="text-sm text-stone-500">/{s.slug}</span></span>
+      {shops.map((sh) => (
+        <li key={sh.slug}>
+          <Link href={`/admin/${sh.slug}`} className="flex items-center gap-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5 transition hover:shadow-md">
+            <span className="grid size-12 place-items-center rounded-xl text-2xl" style={{ background: sh.theme.primary }}>{sh.theme.heroEmoji}</span>
+            <span><span className="block font-semibold">{sh.name}</span><span className="text-sm text-stone-500">/{sh.slug}</span></span>
           </Link>
         </li>
       ))}

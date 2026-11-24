@@ -14,6 +14,11 @@ Next 16: เปิด `cacheComponents` — อ่านข้อมูลสด
 - ฉากร้าน: ผัง/โซน/ช่องวางใน `lib/scene.ts`, ฉากใน `components/three/StoreScene.tsx` · ห้ามใช้ drei `<Html>` ใน Canvas (React root ซ้อน → error ตอน unmount) ใช้ CanvasTexture หรือ DOM overlay
 - three.js โหลดผ่าน `next/dynamic` เท่านั้น (ห้าม import ใน component ที่อยู่ใน initial bundle)
 
+## หลังบ้าน
+- สิทธิ์: `lib/perms.ts` (บทบาท → Perm) · ทุกหน้า/ action เรียก `requireShop(slug, perm)` หรือ `ctx(slug, perm)`
+- Realtime: `publish()` หลังเปลี่ยนออเดอร์ (db/index.ts) → SSE `/api/admin/[shop]/events`, `/api/orders/[id]/events` → `<LiveRefresh>`
+- ห้ามส่ง `shops.integrations` (token) ไป client
+
 ## กฎ
 - ตอบสั้น กระชับ
 - ทุก query กรอง `shop_id` (server ใช้ Drizzle ตรง จึงไม่ผ่าน RLS)
