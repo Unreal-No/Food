@@ -62,7 +62,8 @@ flowchart LR
 | Motion | **GSAP ScrollTrigger** (กล้อง) + **Motion** (UI) | |
 | UI | **Tailwind + shadcn/ui** | ธีมผ่าน CSS variables ต่อร้าน |
 | State | **Zustand** (cart, scene) + **TanStack Query** | |
-| Backend | **Supabase** (Postgres, Auth, Storage, Realtime, Edge Functions) | ครบในที่เดียว, RLS แยกร้าน, มี MCP ใช้งานได้ |
+| Backend | **Supabase** (Postgres, Auth, Storage, Realtime, Edge Functions) | ครบในที่เดียว, มี MCP ใช้งานได้ |
+| ORM | **Drizzle** — dev ใช้ **PGlite** (Postgres ใน process ไม่ต้องติดตั้ง) | schema เดียวใช้ได้ทั้ง dev/prod |
 | ชำระเงิน | **PromptPay QR** + **Omise/2C2P** (บัตร) | ตลาดไทย |
 | แจ้งเตือน | **LINE Messaging API** | LINE Notify ปิดบริการแล้ว (มี.ค. 2025) |
 | Hosting | Vercel + Supabase | |
@@ -173,7 +174,7 @@ audit_logs
 
 | เฟส | ส่งมอบ |
 |---|---|
-| **P0 Foundation** | Next.js + Supabase, Auth, multi-tenant, Catalog + variants/options, หน้าร้าน 2D, ตะกร้า, PromptPay |
+| **P0 Foundation** ✅ | Next.js + Supabase, Auth, multi-tenant, Catalog + variants/options, หน้าร้าน 2D, ตะกร้า, PromptPay |
 | **P1 3D Inspect** | ตัวดูสินค้า GLB/turntable, live variant preview, Media Studio + asset worker |
 | **P2 Walk-in** | ฉาก template 3 แบบ, camera rail, hotspots, Scene Editor, รองรับ splat |
 | **P3 Operations** | ออเดอร์ Realtime, KDS, QR โต๊ะ, LINE แจ้งเตือน, สต็อก |

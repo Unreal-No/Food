@@ -1,13 +1,17 @@
 # Virtual Storefront
 
 แบบระบบ: `docs/DESIGN.md` — อ่านก่อนเริ่มงาน
+@AGENTS.md
 
 ## Stack
-Next.js (App Router, TS) · React Three Fiber + drei · Spark (Gaussian splat) · model-viewer (AR) · GSAP + Motion · Tailwind + shadcn/ui · Zustand · Supabase
+Next.js (App Router, TS) · React Three Fiber + drei · Spark (Gaussian splat) · model-viewer (AR) · GSAP + Motion · Tailwind v4 · Zustand · Drizzle ORM (dev: PGlite ใน `.data/`, prod: Supabase Postgres ผ่าน `DATABASE_URL`)
+
+Next 16: เปิด `cacheComponents` — อ่านข้อมูลสดต้องอยู่ใน `<Suspense>`, หน้าร้านใช้ `"use cache"` + `cacheTag(shopTag(slug))`, action หลังบ้านต้อง `updateTag`
 
 ## กฎ
 - ตอบสั้น กระชับ
-- ทุกตารางมี `shop_id` + RLS
+- ทุก query กรอง `shop_id` (server ใช้ Drizzle ตรง จึงไม่ผ่าน RLS)
+- ราคาเก็บเป็นสตางค์ (integer) · server คำนวณราคาใหม่เสมอ (`lib/pricing.ts`)
 - 3D ต้องมี fallback 2D และอยู่ใน performance budget (DESIGN §5)
 - ราคาใน order เป็น snapshot
 
