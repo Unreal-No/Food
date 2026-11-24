@@ -30,7 +30,9 @@ async function Order({ params }: { params: PageProps<"/[shop]/order/[id]">["para
   const qr = order.status === "pending_payment" && order.payment === "promptpay" && data.shop.promptpayId
     ? await QRCode.toString(promptpayPayload(data.shop.promptpayId, order.total), { type: "svg", margin: 1 })
     : null;
-  const step = STATUS_STEPS.indexOf(order.status);
+  // จ่ายที่เคาน์เตอร์: ไม่มีขั้น "ชำระแล้ว" ในแถบความคืบหน้า
+  const steps = order.payment === "counter" ? STATUS_STEPS.filter((x) => x !== "paid") : STATUS_STEPS;
+  const step = steps.indexOf(order.status);
 
   return (
     <ThemeScope theme={data.shop.theme}>
@@ -45,11 +47,11 @@ async function Order({ params }: { params: PageProps<"/[shop]/order/[id]">["para
           {order.status === "cancelled" ? (
             <p className="mt-6 rounded-2xl bg-red-50 py-3 text-red-700">ยกเลิกแล้ว</p>
           ) : (
-            <ol className="mt-6 grid grid-cols-5 gap-1 text-[11px]">
-              {STATUS_STEPS.map((st, i) => (
+            <ol className={`mt-6 grid gap-1 text-[11px] ${steps.length === 5 ? "grid-cols-5" : "grid-cols-4"}`}>
+              {steps.map((st, i) => (
                 <li key={st} className={i <= step ? "text-brand" : "text-ink/35"}>
                   <span className={`mx-auto mb-1 block h-1.5 rounded-full ${i <= step ? "bg-brand" : "bg-black/10"}`} />
-                  {STATUS_LABEL[st]}
+                  {st === "pending_payment" && order.payment === "counter" ? "รับออเดอร์" : STATUS_LABEL[st]}
                 </li>
               ))}
             </ol>
