@@ -1,16 +1,9 @@
 "use client";
 import { useSyncExternalStore } from "react";
 import type { ShopHours } from "@/db/schema";
+import { isOpen } from "@/lib/hours";
 
 const sub = (cb: () => void) => { const t = setInterval(cb, 60_000); return () => clearInterval(t); };
-
-function isOpen(h: ShopHours) {
-  const now = new Date();
-  const mins = now.getHours() * 60 + now.getMinutes();
-  const [oh, om] = h.open.split(":").map(Number);
-  const [ch, cm] = h.close.split(":").map(Number);
-  return h.days.includes(now.getDay()) && mins >= oh * 60 + om && mins < ch * 60 + cm;
-}
 
 export function OpenStatus({ hours }: { hours: ShopHours }) {
   const open = useSyncExternalStore(sub, () => isOpen(hours), () => null);

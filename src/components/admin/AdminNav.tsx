@@ -4,7 +4,7 @@ import { useParams, usePathname } from "next/navigation";
 
 const NAV = [
   ["", "📊", "ภาพรวม"], ["/orders", "🧾", "ออเดอร์"], ["/products", "🍰", "สินค้า"],
-  ["/options", "🧩", "ตัวเลือกเสริม"], ["/settings", "🎨", "ตั้งค่าร้าน"],
+  ["/options", "🧩", "ตัวเลือกเสริม"], ["/scene", "🏬", "ฉากร้าน 3D"], ["/settings", "🎨", "ตั้งค่าร้าน"],
 ] as const;
 
 export function AdminNav() {

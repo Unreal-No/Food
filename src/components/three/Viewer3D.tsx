@@ -10,7 +10,7 @@ import { activeParts, presetParams } from "@/lib/presets";
 import { MODELS } from "./models";
 
 /** GLB: node ชื่อขึ้นต้น "opt_" ซ่อนไว้จนกว่าจะถูก show · params จับคู่กับชื่อ material */
-function Glb({ url, r }: { url: string; r: Resolved }) {
+export function Glb({ url, r }: { url: string; r: Resolved }) {
   const { scene } = useGLTF(url, false, true);
   const root = useMemo(() => scene.clone(true), [scene]);
   useEffect(() => {

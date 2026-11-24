@@ -6,6 +6,8 @@ import { itemKey, useCart, useCartItems } from "@/lib/cart";
 import { ProductStage } from "./ProductStage";
 import { MediaView } from "@/components/media/MediaView";
 import { has3D, selectionVisual } from "@/lib/visual";
+import { clearHash, getHash, hasWebGL, noopSubscribe, subscribeHash } from "@/lib/browser";
+import { WalkIn, type WalkData } from "./WalkIn";
 export { ProductStage };
 
 type Category = { id: string; name: string; icon: string };
@@ -200,7 +202,9 @@ export function CartPanel({ shop, onClose }: { shop: string; onClose: () => void
 }
 
 /* ---------- หน้าร้าน ---------- */
-export function Storefront({ shop, categories, products }: { shop: string; categories: Category[]; products: CatalogProduct[] }) {
+export function Storefront({ shop, categories, products, walk }: { shop: string; categories: Category[]; products: CatalogProduct[]; walk?: WalkData }) {
+  const walking = useSyncExternalStore(subscribeHash, getHash, () => "") === "#walk";
+  const gl = useSyncExternalStore(noopSubscribe, hasWebGL, () => false);
   const [openId, setOpenId] = useState<string | null>(null);
   const [cartOpen, setCartOpen] = useState(false);
   const [active, setActive] = useState(categories[0]?.id);
@@ -239,6 +243,17 @@ export function Storefront({ shop, categories, products }: { shop: string; categ
       </nav>
 
       <main className="mx-auto max-w-6xl px-4 pb-32">
+        {walk && gl && (
+          <a href="#walk" className="group relative mt-8 flex items-center gap-5 overflow-hidden rounded-[28px] bg-ink p-5 text-card shadow-xl transition hover:-translate-y-0.5 sm:p-6">
+            <span className="absolute -right-10 -top-10 size-48 rounded-full bg-accent/40 blur-3xl transition group-hover:scale-125" />
+            <span className="relative grid size-16 shrink-0 place-items-center rounded-2xl bg-card/10 text-4xl ring-1 ring-card/20 transition group-hover:rotate-6">🚪</span>
+            <span className="relative flex-1">
+              <span className="block font-display text-lg font-semibold sm:text-xl">เดินเข้าร้านแบบ 3D</span>
+              <span className="text-sm text-card/70">เดินชมเคาน์เตอร์ ชั้นวาง และหยิบสินค้ามาดูใกล้ๆ เหมือนอยู่ในร้านจริง</span>
+            </span>
+            <span className="relative hidden rounded-full bg-accent px-4 py-2 text-sm font-medium text-ink sm:block">เข้าร้าน →</span>
+          </a>
+        )}
         {sections.map((c) => (
           <section key={c.id} id={`cat-${c.id}`} className="scroll-mt-20 pt-10">
             <h2 className="mb-4 flex items-baseline gap-3 font-display text-2xl font-semibold">
@@ -262,6 +277,7 @@ export function Storefront({ shop, categories, products }: { shop: string; categ
         </button>
       )}
 
+      {walk && gl && walking && <WalkIn data={walk} onSelect={setOpenId} onClose={clearHash} paused={!!current} />}
       {current && <ProductSheet key={current.id} p={current} shop={shop} onClose={() => setOpenId(null)} />}
       {cartOpen && <CartPanel shop={shop} onClose={() => setCartOpen(false)} />}
     </>

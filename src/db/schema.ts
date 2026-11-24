@@ -8,6 +8,8 @@ export type ShopTheme = {
   primary: string; accent: string; bg: string; surface: string; text: string;
   font: "modern" | "classic"; heroEmoji: string;
 };
+// ฉากร้าน 3D: แม่แบบ + สี + การจัดวาง (slots[i] = productId · "" = อัตโนมัติ · "-" = เว้นว่าง)
+export type SceneConfig = { template?: "cafe" | "restaurant" | "retail"; wall?: string; floor?: string; slots?: string[] };
 export type ShopHours = { open: string; close: string; days: number[] }; // days: 0=อา.
 // สื่อหลักของสินค้า: preset = โมเดล 3D สำเร็จรูป (ไม่ต้องมีไฟล์), glb = ไฟล์ 3D, turntable = ภาพหมุน 360°
 export type Media =
@@ -27,6 +29,7 @@ export const shops = pgTable("shops", {
   theme: jsonb("theme").$type<ShopTheme>().notNull(),
   hours: jsonb("hours").$type<ShopHours>().notNull(),
   promptpayId: text("promptpay_id").notNull().default(""),
+  scene: jsonb("scene").$type<SceneConfig>().notNull().default({}),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

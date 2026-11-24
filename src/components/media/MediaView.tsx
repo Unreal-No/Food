@@ -5,18 +5,12 @@ import type { Media } from "@/db/schema";
 import type { Resolved } from "@/lib/visual";
 import { ProductStage } from "@/components/store/ProductStage";
 import { Turntable } from "./Turntable";
+import { hasWebGL, noopSubscribe } from "@/lib/browser";
 
 // three.js โหลดเฉพาะตอนเปิดดูสินค้า (ไม่ถ่วงหน้าแรก)
 const Viewer3D = dynamic(() => import("@/components/three/Viewer3D"), { ssr: false });
 
-let webgl: boolean | null = null;
-function hasWebGL() {
-  if (webgl === null) {
-    try { webgl = !!document.createElement("canvas").getContext("webgl2"); } catch { webgl = false; }
-  }
-  return webgl;
-}
-const noop = () => () => {};
+const noop = noopSubscribe;
 
 class Fallback extends Component<{ fallback: ReactNode; children: ReactNode }, { err: boolean }> {
   state = { err: false };

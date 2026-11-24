@@ -15,6 +15,13 @@
       "when": 1795538700519,
       "tag": "0001_option_visual",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795540676706,
+      "tag": "0002_shop_scene",
+      "breakpoints": true
     }
   ]
 }

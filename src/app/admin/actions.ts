@@ -197,6 +197,19 @@ export async function saveSettings(slug: string, raw: unknown): Promise<Result> 
   } catch (e) { return fail(e); }
 }
 
+/* ---------- ฉากร้าน 3D ---------- */
+const SceneInput = z.object({
+  template: z.enum(["cafe", "restaurant", "retail"]), wall: hex.optional(), floor: hex.optional(),
+  slots: z.array(z.union([z.uuid(), z.literal(""), z.literal("-")])).max(40),
+});
+export async function saveScene(slug: string, raw: unknown): Promise<Result> {
+  try {
+    const { shop, db } = await ctx(slug);
+    await db.update(s.shops).set({ scene: SceneInput.parse(raw) }).where(eq(s.shops.id, shop.id));
+    return done(slug);
+  } catch (e) { return fail(e); }
+}
+
 /* ---------- ออเดอร์ ---------- */
 export async function setOrderStatus(slug: string, id: string, status: OrderStatus): Promise<Result> {
   try {

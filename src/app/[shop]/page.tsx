@@ -6,6 +6,8 @@ import { getStorefront } from "@/lib/catalog";
 import { ThemeScope } from "@/components/theme";
 import { OpenStatus } from "@/components/store/OpenStatus";
 import { Storefront } from "@/components/store/Storefront";
+import { assignSlots, resolveScene } from "@/lib/scene";
+import { baht, fromPrice } from "@/lib/pricing";
 
 export async function generateMetadata({ params }: PageProps<"/[shop]">): Promise<Metadata> {
   const data = await getStorefront((await params).shop);
@@ -25,6 +27,13 @@ async function Store({ params }: { params: PageProps<"/[shop]">["params"] }) {
   const data = await getStorefront(slug);
   if (!data) notFound();
   const { shop, categories, products } = data;
+  const sc = resolveScene(shop.scene, shop.type);
+  const walk = {
+    layout: sc.layout, wall: sc.wall, floor: sc.floor, theme: shop.theme, shopName: shop.name, hours: shop.hours,
+    slots: assignSlots(sc.layout.slots, products, shop.scene.slots).map((p) => p && {
+      id: p.id, name: p.name, emoji: p.emoji, price: baht(fromPrice(p)), media: p.media[0], soldout: p.status === "soldout",
+    }),
+  };
 
   return (
     <ThemeScope theme={shop.theme}>
@@ -36,7 +45,7 @@ async function Store({ params }: { params: PageProps<"/[shop]">["params"] }) {
             <Link href="/" className="text-sm text-card/60 hover:text-card">← ร้านทั้งหมด</Link>
             <h1 className="mt-8 font-display text-4xl font-bold leading-[1.1] md:text-6xl">{shop.name}</h1>
             <p className="mt-3 max-w-md text-card/75 md:text-lg">{shop.tagline}</p>
-            <div className="mt-5 [&>span]:bg-card/90"><OpenStatus hours={shop.hours} /></div>
+            <div className="mt-5 flex flex-wrap items-center gap-3 [&>span]:bg-card/90"><OpenStatus hours={shop.hours} /><a href="#walk" className="rounded-full bg-accent px-4 py-1.5 text-sm font-medium text-ink shadow-lg transition hover:scale-105">🚪 เดินเข้าร้าน 3D</a></div>
           </div>
           <div className="relative hidden size-56 shrink-0 place-items-center sm:grid md:size-72">
             <div className="absolute inset-6 rounded-full bg-card/10 ring-1 ring-card/20" />
@@ -44,7 +53,7 @@ async function Store({ params }: { params: PageProps<"/[shop]">["params"] }) {
           </div>
         </div>
       </header>
-      <Storefront shop={shop.slug} categories={categories} products={products} />
+      <Storefront shop={shop.slug} categories={categories} products={products} walk={walk} />
     </ThemeScope>
   );
 }
