@@ -4,9 +4,11 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { deleteProduct, saveProduct } from "@/app/admin/actions";
 import type { CatalogProduct } from "@/lib/pricing";
+import type { Media, Visual } from "@/db/schema";
+import { MediaEditor, VisualEditor } from "./MediaEditor";
 import { btnDanger, btnGhost, btnPrimary, Card, field, Label, useAction } from "./ui";
 
-type V = { id?: string; name: string; price: string; stock: string };
+type V = { id?: string; name: string; price: string; stock: string; visual: Visual };
 const toBaht = (s: number) => String(s / 100);
 
 export function ProductEditor({ slug, product, categories, groups }: {
@@ -20,15 +22,17 @@ export function ProductEditor({ slug, product, categories, groups }: {
     badge: product?.badge ?? "", basePrice: toBaht(product?.basePrice ?? 0), status: product?.status ?? "active",
     categoryId: product?.categoryId ?? categories[0]?.id ?? "",
   });
-  const [variants, setVariants] = useState<V[]>(product?.variants.map((v) => ({ id: v.id, name: v.name, price: toBaht(v.price), stock: v.stock === null ? "" : String(v.stock) })) ?? []);
+  const [variants, setVariants] = useState<V[]>(product?.variants.map((v) => ({ id: v.id, name: v.name, price: toBaht(v.price), stock: v.stock === null ? "" : String(v.stock), visual: v.visual })) ?? []);
+  const [media, setMedia] = useState<Media | undefined>(product?.media[0]);
+  const [open3d, setOpen3d] = useState<number | null>(null);
   const [groupIds, setGroupIds] = useState<string[]>(product?.groups.map((g) => g.id) ?? []);
   const setV = (i: number, patch: Partial<V>) => setVariants((vs) => vs.map((v, j) => (j === i ? { ...v, ...patch } : v)));
   const base = `/admin/${slug}/products`;
 
   const save = () => run(() => saveProduct(slug, {
     id: product?.id, ...f, categoryId: f.categoryId || null, basePrice: Number(f.basePrice) || 0,
-    variants: variants.map((v) => ({ id: v.id, name: v.name, price: Number(v.price) || 0, stock: v.stock === "" ? null : Math.max(0, Math.floor(Number(v.stock))) })),
-    groupIds,
+    variants: variants.map((v) => ({ id: v.id, name: v.name, price: Number(v.price) || 0, stock: v.stock === "" ? null : Math.max(0, Math.floor(Number(v.stock))), visual: v.visual })),
+    groupIds, media: media ? [media] : [],
   }), { success: "บันทึกแล้ว ✓", onOk: (r) => { if (!product && r.id) router.replace(`${base}/${r.id}`); } });
 
   return (
@@ -66,16 +70,25 @@ export function ProductEditor({ slug, product, categories, groups }: {
         </div>
       </Card>
 
-      <Card title="แบบย่อย (Variants)" action={<button className={btnGhost} onClick={() => setVariants([...variants, { name: "", price: f.basePrice, stock: "" }])}>+ เพิ่มแบบ</button>}>
+      <Card title="สื่อสินค้า · 3D / 360°">
+        <MediaEditor slug={slug} media={media} onChange={setMedia} emoji={f.emoji}
+          previews={[{ name: "แบบหลัก", visual: {} }, ...variants.map((v) => ({ name: v.name, visual: v.visual }))]} />
+      </Card>
+
+      <Card title="แบบย่อย (Variants)" action={<button className={btnGhost} onClick={() => setVariants([...variants, { name: "", price: f.basePrice, stock: "", visual: {} }])}>+ เพิ่มแบบ</button>}>
         <p className="mb-3 text-xs text-stone-500">เช่น ร้อน / เย็น / ปั่น หรือ S / M / L — ลูกค้าต้องเลือก 1 แบบ · สต็อกว่าง = ไม่จำกัด</p>
         {variants.length === 0 && <p className="text-sm text-stone-400">ไม่มี — ใช้ราคาหลัก</p>}
         <ul className="space-y-2">
           {variants.map((v, i) => (
-            <li key={v.id ?? `n${i}`} className="grid grid-cols-[1fr_90px_80px_auto] gap-2">
+            <li key={v.id ?? `n${i}`} className="space-y-2">
+              <div className="grid grid-cols-[1fr_90px_80px_auto_auto] gap-2">
               <input className={field} placeholder="ชื่อแบบ" value={v.name} onChange={(e) => setV(i, { name: e.target.value })} aria-label="ชื่อแบบ" />
               <input className={field} type="number" min={0} step="0.25" placeholder="ราคา" value={v.price} onChange={(e) => setV(i, { price: e.target.value })} aria-label="ราคา" />
               <input className={field} type="number" min={0} placeholder="สต็อก" value={v.stock} onChange={(e) => setV(i, { stock: e.target.value })} aria-label="สต็อก" />
+              <button className={`${btnGhost} px-3 ${Object.keys(v.visual).length ? "bg-emerald-50" : ""}`} onClick={() => setOpen3d(open3d === i ? null : i)} aria-label="ผลต่อภาพ 3D">3D</button>
               <button className={btnDanger} onClick={() => setVariants(variants.filter((_, j) => j !== i))} aria-label="ลบแบบ">✕</button>
+              </div>
+              {open3d === i && <VisualEditor value={v.visual} onChange={(visual) => setV(i, { visual })} preset={media?.type === "preset" ? media.preset : undefined} allowPreset={media?.type === "preset"} />}
             </li>
           ))}
         </ul>

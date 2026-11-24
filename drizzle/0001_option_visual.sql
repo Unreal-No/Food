@@ -1,0 +1,1 @@
+ALTER TABLE "options" ADD COLUMN "visual" jsonb DEFAULT '{}'::jsonb NOT NULL;

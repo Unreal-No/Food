@@ -24,7 +24,7 @@ export async function loadCatalog(shopId: string, includeHidden = false) {
   const groupMap = new Map(groups.map((g) => [g.id, {
     id: g.id, name: g.name, minSelect: g.minSelect, maxSelect: g.maxSelect,
     options: opts.filter((o) => o.groupId === g.id).map((o) => ({
-      id: o.id, name: o.name, priceDelta: o.priceDelta, isDefault: o.isDefault, isAvailable: o.isAvailable,
+      id: o.id, name: o.name, priceDelta: o.priceDelta, isDefault: o.isDefault, isAvailable: o.isAvailable, visual: o.visual,
     })),
   }]));
 
@@ -32,8 +32,8 @@ export async function loadCatalog(shopId: string, includeHidden = false) {
     .filter((p) => includeHidden || p.status !== "hidden")
     .map((p) => ({
       id: p.id, categoryId: p.categoryId, name: p.name, description: p.description, emoji: p.emoji,
-      badge: p.badge, basePrice: p.basePrice, status: p.status,
-      variants: vars.filter((v) => v.productId === p.id).map((v) => ({ id: v.id, name: v.name, price: v.price, stock: v.stock })),
+      badge: p.badge, basePrice: p.basePrice, status: p.status, media: p.media,
+      variants: vars.filter((v) => v.productId === p.id).map((v) => ({ id: v.id, name: v.name, price: v.price, stock: v.stock, visual: v.visual })),
       groups: links.filter((l) => l.productId === p.id).map((l) => groupMap.get(l.groupId)!).filter(Boolean),
     }));
 

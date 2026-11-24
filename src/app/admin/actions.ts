@@ -6,11 +6,22 @@ import { updateTag } from "next/cache";
 import { getDb, schema as s } from "@/db";
 import { getShop, shopTag } from "@/lib/catalog";
 import { endSession, requireAdmin, startSession } from "@/lib/auth";
+import { saveUpload } from "@/lib/storage";
 import type { OrderStatus } from "@/db/schema";
 
 type Result = { ok: true; id?: string } | { ok: false; error: string };
 const satang = z.number().min(0).max(1_000_000).transform((b) => Math.round(b * 100));
 const opt = z.uuid().optional();
+const mediaUrl = z.string().max(300).regex(/^(\/media\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.[a-z]{3,4}|https:\/\/\S+)$/, "URL สื่อไม่ถูกต้อง");
+const Params = z.record(z.string().max(20), z.string().max(20)).optional();
+const Parts = z.array(z.string().max(30)).max(20).optional();
+const VisualSchema = z.object({ preset: z.string().max(20).optional(), params: Params, show: Parts, hide: Parts, scale: z.number().min(0.5).max(2).optional() });
+const MediaSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("preset"), preset: z.string().max(20), params: Params, show: Parts }),
+  z.object({ type: z.literal("glb"), url: mediaUrl }),
+  z.object({ type: z.literal("turntable"), frames: z.array(mediaUrl).min(2, "ภาพหมุนต้องมีอย่างน้อย 2 เฟรม").max(72) }),
+  z.object({ type: z.literal("photo"), url: mediaUrl }),
+]);
 
 async function ctx(slug: string) {
   await requireAdmin();
@@ -36,7 +47,8 @@ const ProductInput = z.object({
   id: opt, categoryId: z.uuid().nullable(), name: z.string().trim().min(1, "กรุณาใส่ชื่อสินค้า").max(80),
   description: z.string().max(300), emoji: z.string().max(8), badge: z.string().max(20),
   basePrice: satang, status: z.enum(["active", "hidden", "soldout"]),
-  variants: z.array(z.object({ id: opt, name: z.string().trim().min(1, "ชื่อแบบห้ามว่าง").max(40), price: satang, stock: z.number().int().min(0).nullable() })).max(20),
+  variants: z.array(z.object({ id: opt, name: z.string().trim().min(1, "ชื่อแบบห้ามว่าง").max(40), price: satang, stock: z.number().int().min(0).nullable(), visual: VisualSchema.default({}) })).max(20),
+  media: z.array(MediaSchema).max(1),
   groupIds: z.array(z.uuid()).max(20),
 });
 
@@ -47,7 +59,7 @@ export async function saveProduct(slug: string, raw: unknown): Promise<Result> {
     const id = await db.transaction(async (tx) => {
       const fields = {
         categoryId: d.categoryId, name: d.name, description: d.description, emoji: d.emoji || "🍽️",
-        badge: d.badge, basePrice: d.variants.length ? Math.min(...d.variants.map((v) => v.price)) : d.basePrice, status: d.status,
+        badge: d.badge, basePrice: d.variants.length ? Math.min(...d.variants.map((v) => v.price)) : d.basePrice, status: d.status, media: d.media,
       };
       let pid = d.id;
       if (pid) {
@@ -60,7 +72,7 @@ export async function saveProduct(slug: string, raw: unknown): Promise<Result> {
       const keep = d.variants.flatMap((v) => (v.id ? [v.id] : []));
       await tx.delete(s.productVariants).where(and(eq(s.productVariants.productId, pid!), keep.length ? notInArray(s.productVariants.id, keep) : undefined));
       for (const [i, v] of d.variants.entries()) {
-        const row = { name: v.name, price: v.price, stock: v.stock, sort: i };
+        const row = { name: v.name, price: v.price, stock: v.stock, visual: v.visual, sort: i };
         if (v.id) await tx.update(s.productVariants).set(row).where(and(eq(s.productVariants.id, v.id), eq(s.productVariants.productId, pid!)));
         else await tx.insert(s.productVariants).values({ ...row, productId: pid! });
       }
@@ -93,6 +105,19 @@ export async function deleteProduct(slug: string, id: string): Promise<Result> {
   } catch (e) { return fail(e); }
 }
 
+/* ---------- อัปโหลดสื่อ (ทีละไฟล์) ---------- */
+const LIMIT: Record<string, number> = { glb: 15e6, image: 3e6 };
+export async function uploadMedia(slug: string, fd: FormData): Promise<Result & { url?: string }> {
+  try {
+    const { shop } = await ctx(slug);
+    const file = fd.get("file");
+    if (!(file instanceof File) || !file.size) throw new Error("ไม่พบไฟล์");
+    const kind = file.name.toLowerCase().endsWith(".glb") ? "glb" : "image";
+    if (file.size > LIMIT[kind]) throw new Error(`${file.name} ใหญ่เกิน ${LIMIT[kind] / 1e6}MB`);
+    return { ok: true, url: await saveUpload(shop.id, file) };
+  } catch (e) { return fail(e); }
+}
+
 /* ---------- หมวดหมู่ ---------- */
 export async function saveCategory(slug: string, raw: unknown): Promise<Result> {
   try {
@@ -116,7 +141,7 @@ export async function deleteCategory(slug: string, id: string): Promise<Result> 
 const GroupInput = z.object({
   id: opt, name: z.string().trim().min(1, "กรุณาใส่ชื่อกลุ่ม").max(40),
   minSelect: z.number().int().min(0).max(20), maxSelect: z.number().int().min(1).max(20),
-  options: z.array(z.object({ id: opt, name: z.string().trim().min(1, "ชื่อตัวเลือกห้ามว่าง").max(40), priceDelta: satang, isDefault: z.boolean(), isAvailable: z.boolean() })).min(1, "ต้องมีอย่างน้อย 1 ตัวเลือก").max(30),
+  options: z.array(z.object({ id: opt, name: z.string().trim().min(1, "ชื่อตัวเลือกห้ามว่าง").max(40), priceDelta: satang, isDefault: z.boolean(), isAvailable: z.boolean(), visual: VisualSchema.default({}) })).min(1, "ต้องมีอย่างน้อย 1 ตัวเลือก").max(30),
 }).refine((g) => g.minSelect <= g.maxSelect, "ขั้นต่ำต้องไม่เกินสูงสุด");
 
 export async function saveOptionGroup(slug: string, raw: unknown): Promise<Result> {
@@ -135,7 +160,7 @@ export async function saveOptionGroup(slug: string, raw: unknown): Promise<Resul
       const keep = d.options.flatMap((o) => (o.id ? [o.id] : []));
       await tx.delete(s.options).where(and(eq(s.options.groupId, gid!), keep.length ? notInArray(s.options.id, keep) : undefined));
       for (const [i, o] of d.options.entries()) {
-        const row = { name: o.name, priceDelta: o.priceDelta, isDefault: o.isDefault, isAvailable: o.isAvailable, sort: i };
+        const row = { name: o.name, priceDelta: o.priceDelta, isDefault: o.isDefault, isAvailable: o.isAvailable, visual: o.visual, sort: i };
         if (o.id) await tx.update(s.options).set(row).where(and(eq(s.options.id, o.id), eq(s.options.groupId, gid!)));
         else await tx.insert(s.options).values({ ...row, groupId: gid! });
       }

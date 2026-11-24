@@ -1,11 +1,12 @@
 // ใช้ร่วมกันทั้ง client (แสดงราคา) และ server (คำนวณจริงตอนสั่ง)
+import type { Media, Visual } from "@/db/schema";
 
-export type CatalogOption = { id: string; name: string; priceDelta: number; isDefault: boolean; isAvailable: boolean };
+export type CatalogOption = { id: string; name: string; priceDelta: number; isDefault: boolean; isAvailable: boolean; visual: Visual };
 export type CatalogGroup = { id: string; name: string; minSelect: number; maxSelect: number; options: CatalogOption[] };
-export type CatalogVariant = { id: string; name: string; price: number; stock: number | null };
+export type CatalogVariant = { id: string; name: string; price: number; stock: number | null; visual: Visual };
 export type CatalogProduct = {
   id: string; categoryId: string | null; name: string; description: string; emoji: string; badge: string;
-  basePrice: number; status: "active" | "hidden" | "soldout";
+  basePrice: number; status: "active" | "hidden" | "soldout"; media: Media[];
   variants: CatalogVariant[]; groups: CatalogGroup[];
 };
 

@@ -3,23 +3,14 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type PointerEvent } from "react";
 import { baht, defaultSelection, fromPrice, priceLine, type CatalogProduct, type Selection } from "@/lib/pricing";
 import { itemKey, useCart, useCartItems } from "@/lib/cart";
+import { ProductStage } from "./ProductStage";
+import { MediaView } from "@/components/media/MediaView";
+import { has3D, selectionVisual } from "@/lib/visual";
+export { ProductStage };
 
 type Category = { id: string; name: string; icon: string };
 
 export const useHydrated = () => useSyncExternalStore(() => () => {}, () => true, () => false);
-
-/* ---------- ภาพสินค้า (placeholder จนกว่าจะมี 3D ใน P1) ---------- */
-export function ProductStage({ emoji, size = "md", bump }: { emoji: string; size?: "sm" | "md" | "lg"; bump?: string }) {
-  const text = { sm: "text-3xl", md: "text-7xl", lg: "text-[9rem]" }[size];
-  return (
-    <div className="relative grid aspect-square place-items-center overflow-hidden rounded-[inherit] bg-[radial-gradient(circle_at_50%_38%,color-mix(in_oklab,var(--c-accent)_55%,transparent),transparent_65%),linear-gradient(160deg,color-mix(in_oklab,var(--c-accent)_18%,var(--c-surface)),color-mix(in_oklab,var(--c-primary)_12%,var(--c-surface)))]">
-      <span className="absolute bottom-[16%] h-[8%] w-[46%] rounded-[50%] bg-black/25 blur-md" />
-      <span key={bump} className={`${text} relative select-none drop-shadow-[0_18px_18px_rgba(0,0,0,0.25)] transition-transform duration-500 group-hover:scale-110 ${size === "lg" ? "animate-float" : ""}`}>
-        {emoji}
-      </span>
-    </div>
-  );
-}
 
 function tilt(e: PointerEvent<HTMLElement>) {
   const el = e.currentTarget, r = el.getBoundingClientRect();
@@ -37,8 +28,9 @@ function ProductCard({ p, onOpen, i }: { p: CatalogProduct; onOpen: () => void; 
       className="group relative animate-rise rounded-[28px] bg-card p-2.5 text-left shadow-[0_1px_2px_rgba(0,0,0,0.06)] ring-1 ring-black/5 transition-[transform,box-shadow] duration-300 will-change-transform hover:shadow-[0_24px_48px_-16px_rgba(0,0,0,0.25)] disabled:opacity-60"
     >
       <div className="relative rounded-[22px]">
-        <ProductStage emoji={p.emoji} />
+        <ProductStage emoji={p.emoji} image={p.media[0]?.type === "photo" ? p.media[0].url : p.media[0]?.type === "turntable" ? p.media[0].frames[0] : undefined} />
         {p.badge && <span className="absolute left-2.5 top-2.5 rounded-full bg-brand px-2.5 py-0.5 text-xs font-medium text-card">{p.badge}</span>}
+        {p.media[0] && <span className="absolute right-2.5 top-2.5 rounded-full bg-card/85 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-ink/70 backdrop-blur">{has3D(p.media[0]) ? "3D" : p.media[0].type === "turntable" ? "360°" : "📷"}</span>}
         {sold && <span className="absolute inset-0 grid place-items-center rounded-[22px] bg-card/60 font-display text-lg font-semibold">หมดแล้ว</span>}
       </div>
       <div className="px-1.5 pb-1.5 pt-3">
@@ -58,6 +50,7 @@ function ProductSheet({ p, shop, onClose }: { p: CatalogProduct; shop: string; o
   const [sel, setSel] = useState<Selection>(() => defaultSelection(p));
   const add = useCart((s) => s.add);
   const line = priceLine(p, sel);
+  const visual = useMemo(() => selectionVisual(p, sel), [p, sel]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -92,7 +85,7 @@ function ProductSheet({ p, shop, onClose }: { p: CatalogProduct; shop: string; o
       <div className="relative flex max-h-[92dvh] w-full animate-sheet flex-col overflow-hidden rounded-t-[32px] bg-card shadow-2xl md:max-w-lg md:rounded-[32px]">
         <button onClick={onClose} aria-label="ปิด" className="absolute right-4 top-4 z-10 grid size-9 place-items-center rounded-full bg-card/80 text-xl backdrop-blur">×</button>
         <div className="overflow-y-auto">
-          <div className="rounded-b-[32px]"><ProductStage emoji={p.emoji} size="lg" bump={sel.variantId} /></div>
+          <div className="aspect-square overflow-hidden rounded-b-[32px] md:aspect-[5/4]"><MediaView media={p.media[0]} resolved={visual} emoji={p.emoji} alt={p.name} /></div>
           <div className="space-y-6 p-6">
             <div>
               <h2 className="font-display text-2xl font-semibold">{p.name}</h2>

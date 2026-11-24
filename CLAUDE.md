@@ -8,6 +8,11 @@ Next.js (App Router, TS) · React Three Fiber + drei · Spark (Gaussian splat) �
 
 Next 16: เปิด `cacheComponents` — อ่านข้อมูลสดต้องอยู่ใน `<Suspense>`, หน้าร้านใช้ `"use cache"` + `cacheTag(shopTag(slug))`, action หลังบ้านต้อง `updateTag`
 
+## 3D
+- Preset: meta ใน `lib/presets.ts`, โมเดลใน `components/three/models.tsx` (เพิ่ม preset = เพิ่มทั้งสองที่)
+- ผลของ variant/option = `Visual` (preset/params/show/hide/scale) รวมด้วย `lib/visual.ts`
+- three.js โหลดผ่าน `next/dynamic` เท่านั้น (ห้าม import ใน component ที่อยู่ใน initial bundle)
+
 ## กฎ
 - ตอบสั้น กระชับ
 - ทุก query กรอง `shop_id` (server ใช้ Drizzle ตรง จึงไม่ผ่าน RLS)

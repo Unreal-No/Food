@@ -22,8 +22,18 @@ npm run dev        # http://localhost:3000  (สร้าง DB + ข้อม�
 - หลังบ้าน: ภาพรวมยอดขาย, ออเดอร์ (ยืนยันเงิน → ทำ → พร้อม → ส่งมอบ), สินค้า + variants + สต็อก, หมวดหมู่, กลุ่มตัวเลือก, ธีม/เวลาเปิด/PromptPay
 - ราคาคำนวณใหม่ที่ server ทุกครั้ง, ตัดสต็อกใน transaction
 
+## ทำแล้ว (P1 · 3D)
+- ตัวดูสินค้า 3D: ลากหมุน, หยิก/เลื่อนซูม, หมุนอัตโนมัติ, ปุ่มกลับมุมเดิม — โหลด three.js เฉพาะตอนเปิดสินค้า
+- **Live preview**: เลือก ร้อน/เย็น/ปั่น → แก้วเปลี่ยน, เพิ่มวิป/ไข่มุก/ไข่ดาว → โผล่ในโมเดล, พิเศษ → ขยายจาน
+- โมเดลสำเร็จรูป 6 แบบ (แก้วร้อน, แก้วเย็น, จานข้าว, ชามซุป, ครัวซองต์, เค้ก) ปรับสี/ชิ้นส่วนได้ ไม่ต้องมีไฟล์
+- รองรับไฟล์ `.glb` (node `opt_*` = ชิ้นส่วนเสริม, ชื่อ material = คีย์สี), ภาพหมุน 360° (ลากเปลี่ยนเฟรม + ซูม/เลื่อน), รูปภาพ
+- หลังบ้าน **Media Studio**: เลือก/อัปโหลดสื่อ + พรีวิวสดตาม variant, ปุ่ม "3D" ต่อ variant/option ตั้งผลต่อภาพ
+- Fallback 2D อัตโนมัติเมื่อไม่มี WebGL / โหลดพลาด, เคารพ `prefers-reduced-motion`
+
+> DB เดิมจาก P0: `npm run db:reset` เพื่อได้ข้อมูลตัวอย่างพร้อม 3D
+
 ## Production
 ตั้ง `DATABASE_URL` (Supabase Postgres), `ADMIN_PASSWORD`, `AUTH_SECRET` แล้ว `npm run db:migrate && npm run build`
 
 ## ถัดไป
-P1 ตัวดูสินค้า 3D (GLB / turntable) · P2 เดินชมร้าน 3D · P3 Realtime/KDS/LINE · P4 AI Barista
+P1.5 บีบอัด GLB อัตโนมัติ (gltf-transform) + ย้ายไฟล์ไป Supabase Storage · P2 เดินชมร้าน 3D · P3 Realtime/KDS/LINE · P4 AI Barista

@@ -175,7 +175,7 @@ audit_logs
 | เฟส | ส่งมอบ |
 |---|---|
 | **P0 Foundation** ✅ | Next.js + Supabase, Auth, multi-tenant, Catalog + variants/options, หน้าร้าน 2D, ตะกร้า, PromptPay |
-| **P1 3D Inspect** | ตัวดูสินค้า GLB/turntable, live variant preview, Media Studio + asset worker |
+| **P1 3D Inspect** ✅ (เหลือ asset worker) | ตัวดูสินค้า GLB/turntable, live variant preview, Media Studio + asset worker |
 | **P2 Walk-in** | ฉาก template 3 แบบ, camera rail, hotspots, Scene Editor, รองรับ splat |
 | **P3 Operations** | ออเดอร์ Realtime, KDS, QR โต๊ะ, LINE แจ้งเตือน, สต็อก |
 | **P4 Growth** | AI Barista, อ่านรูปเมนู, สมาชิก/คูปอง, AR, Analytics |

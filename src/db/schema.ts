@@ -9,8 +9,14 @@ export type ShopTheme = {
   font: "modern" | "classic"; heroEmoji: string;
 };
 export type ShopHours = { open: string; close: string; days: number[] }; // days: 0=อา.
-export type Media = { type: "photo" | "glb" | "turntable" | "splat"; url: string; frames?: string[] };
-export type VariantVisual = { scale?: number; materials?: Record<string, string>; showNodes?: string[]; hideNodes?: string[] };
+// สื่อหลักของสินค้า: preset = โมเดล 3D สำเร็จรูป (ไม่ต้องมีไฟล์), glb = ไฟล์ 3D, turntable = ภาพหมุน 360°
+export type Media =
+  | { type: "preset"; preset: string; params?: Record<string, string>; show?: string[] }
+  | { type: "glb"; url: string }
+  | { type: "turntable"; frames: string[] }
+  | { type: "photo"; url: string };
+// ผลต่อภาพ 3D เมื่อเลือก variant/option: เปลี่ยน preset, สี (params / ชื่อ material), แสดง/ซ่อนชิ้นส่วน (ชื่อ node), ขนาด
+export type Visual = { preset?: string; params?: Record<string, string>; show?: string[]; hide?: string[]; scale?: number };
 
 export const shops = pgTable("shops", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -53,7 +59,7 @@ export const productVariants = pgTable("product_variants", {
   sku: text("sku").notNull().default(""),
   price: integer("price").notNull(),
   stock: integer("stock"), // null = ไม่จำกัด
-  visual: jsonb("visual").$type<VariantVisual>().notNull().default({}),
+  visual: jsonb("visual").$type<Visual>().notNull().default({}),
   sort: integer("sort").notNull().default(0),
 }, (t) => [index("variants_product_idx").on(t.productId)]);
 
@@ -73,6 +79,7 @@ export const options = pgTable("options", {
   priceDelta: integer("price_delta").notNull().default(0),
   isDefault: boolean("is_default").notNull().default(false),
   isAvailable: boolean("is_available").notNull().default(true),
+  visual: jsonb("visual").$type<Visual>().notNull().default({}),
   sort: integer("sort").notNull().default(0),
 });
 
