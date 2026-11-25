@@ -1,13 +1,20 @@
 # ขึ้นระบบจริง (Supabase + Vercel)
 
-## 1. Supabase
+## สถานะปัจจุบัน
+โปรเจกต์ Supabase **`virtual-storefront`** (ref `fjwkzojulvqpwycdltlw`, Singapore, แพ็กเกจ free) — `https://fjwkzojulvqpwycdltlw.supabase.co`
+- ✅ ตารางครบ (migrations 0000–0005) + บันทึกใน `drizzle.__drizzle_migrations` แล้ว → `npm run db:migrate` จะลงเฉพาะของใหม่
+- ✅ RLS เปิดทุกตาราง + revoke anon/authenticated (`supabase/setup.sql`) — Data API อ่าน/เขียนไม่ได้, แอปใช้ role postgres ผ่าน `DATABASE_URL`
+- ✅ bucket `media` (public, ≤15MB, เฉพาะรูป/GLB)
+- ⏳ ที่เหลือต้องทำใน Dashboard (ค่าลับ ไม่ผ่าน MCP): รหัสฐานข้อมูล + service_role key → ใส่ env ตามข้อ 2
+
+## 1. Supabase (กรณีสร้างใหม่)
 1. สร้างโปรเจกต์ (region ใกล้ลูกค้า เช่น Singapore)
-2. **Database → Connect**: คัด 2 URL
+2. **Database → Connect** (ถ้าไม่รู้รหัส: Database → Settings → Reset database password): คัด 2 URL
    - `DATABASE_URL` = Transaction pooler (port 6543) — ใช้กับ query ทั่วไป
    - `DATABASE_LISTEN_URL` = Session pooler (port 5432) หรือ Direct — ใช้กับ realtime (LISTEN/NOTIFY ใช้ผ่าน transaction pooler ไม่ได้)
 3. **Storage → New bucket** ชื่อ `media` แบบ **Public**
 4. **Project Settings → API**: คัด `SUPABASE_URL` และ `service_role` key (เก็บฝั่ง server เท่านั้น)
-5. สร้างตาราง: `DATABASE_URL=... npm run db:migrate`
+5. สร้างตาราง: `DATABASE_URL=... npm run db:migrate` แล้วรัน `supabase/setup.sql` ใน SQL Editor
 
 ## 2. Environment variables
 | ชื่อ | จำเป็น | คำอธิบาย |
