@@ -19,6 +19,8 @@ Next 16: เปิด `cacheComponents` — อ่านข้อมูลสด
 - Realtime: `publish()` หลังเปลี่ยนออเดอร์ (db/index.ts) → SSE `/api/admin/[shop]/events`, `/api/orders/[id]/events` → `<LiveRefresh>`
 - ห้ามส่ง `shops.integrations` (token) ไป client
 - AI: client/รุ่นใน `lib/ai.ts` · ใช้ structured output (`zodOutputFormat`) · ทดสอบด้วย `ANTHROPIC_BASE_URL` ชี้ mock
+- ข้อมูลลับใน DB: `seal()/unseal()` (`lib/secret.ts`) · ไฟล์: `lib/storage.ts` (Supabase หรือในเครื่อง) · คู่มือ: `docs/DEPLOY.md`
+- กราฟ: `components/admin/charts.tsx` ตามหลัก dataviz (แท่ง ≤24px, tooltip, มุมมองตาราง)
 - คูปอง/แต้ม: `lib/coupons.ts` · server คำนวณส่วนลดใหม่ตอนสั่ง + `claimCoupon` ใน transaction
 
 ## กฎ

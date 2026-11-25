@@ -65,8 +65,16 @@ npm run dev        # http://localhost:3000  (สร้าง DB + ข้อม�
 
 > AI เปิดเมื่อตั้ง `ANTHROPIC_API_KEY` · เปลี่ยนรุ่นได้ด้วย `BARISTA_MODEL`, `MENU_IMPORT_MODEL`
 
-## Production
-ตั้ง `DATABASE_URL` (Supabase Postgres), `ADMIN_PASSWORD`, `AUTH_SECRET`, `SITE_URL` (ใช้สร้าง QR โต๊ะ) แล้ว `npm run db:migrate && npm run build`
+## ทำแล้ว (P5 · พร้อมขึ้นระบบจริง)
+- **หน้าสถิติ**: ยอดขาย/ออเดอร์/เฉลี่ยต่อบิล เทียบช่วงก่อน, กราฟยอดขายรายวัน (7/30/90 วัน), ออเดอร์ตามชั่วโมง, สัดส่วนช่องทาง/การชำระ, เมนูทำเงินสูงสุด (กราฟมี tooltip + ดูเป็นตาราง)
+- **สร้างร้านใหม่** จากหลังบ้าน (ผู้ดูแลระบบ) พร้อมบัญชีเจ้าของร้าน
+- **Supabase Storage** สำหรับรูป/โมเดล 3D (ไม่ตั้ง = เก็บในเครื่อง)
+- **เข้ารหัส token LINE** ในฐานข้อมูล (AES-256-GCM)
+- **เลขออเดอร์ไม่ซ้ำ** แม้สั่งพร้อมกัน (unique + retry)
+- Security headers, `/api/health`, แยก connection สำหรับ realtime บน pooler
 
-## ถัดไป
-P1.5 บีบอัด GLB อัตโนมัติ (gltf-transform) + ย้ายไฟล์ไป Supabase Storage · P2.5 ฉากสแกนร้านจริง (Gaussian Splat) · แดชบอร์ดสถิติ (กราฟยอดขาย) · ใช้แต้มแลกส่วนลด · AR Android สำหรับโมเดลสำเร็จรูป
+## Production
+ดู [docs/DEPLOY.md](docs/DEPLOY.md)
+
+## ถัดไป (ข้อเสนอ)
+P1.5 บีบอัด GLB อัตโนมัติ (gltf-transform) + ย้ายไฟล์ไป Supabase Storage · P2.5 ฉากสแกนร้านจริง (Gaussian Splat) · ใช้แต้มแลกส่วนลด · AR Android สำหรับโมเดลสำเร็จรูป

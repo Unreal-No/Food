@@ -6,6 +6,7 @@ import { getDb, schema as s } from "@/db";
 import { can, requireSession } from "@/lib/auth";
 import { listShops } from "@/lib/catalog";
 import { logout } from "./actions";
+import { CreateShop } from "@/components/admin/CreateShop";
 
 export const metadata = { title: "หลังบ้าน" };
 
@@ -30,6 +31,8 @@ async function Shops() {
   }
   const shops = await listShops();
   return (
+    <>
+    <CreateShop />
     <ul className="mt-8 grid gap-3 sm:grid-cols-2">
       {shops.map((sh) => (
         <li key={sh.slug}>
@@ -40,5 +43,6 @@ async function Shops() {
         </li>
       ))}
     </ul>
+    </>
   );
 }

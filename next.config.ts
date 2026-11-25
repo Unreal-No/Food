@@ -5,6 +5,18 @@ const nextConfig: NextConfig = {
   partialPrefetching: true,
   serverExternalPackages: ["@electric-sql/pglite"],
   experimental: { serverActions: { bodySizeLimit: "16mb" } }, // อัปโหลด GLB / ภาพทีละไฟล์
+  poweredByHeader: false,
+  async headers() {
+    const base = [
+      { key: "X-Content-Type-Options", value: "nosniff" },
+      { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+      { key: "Permissions-Policy", value: "camera=(self), microphone=(), geolocation=()" },
+    ];
+    return [
+      { source: "/:path*", headers: [...base, { key: "X-Frame-Options", value: "SAMEORIGIN" }] },
+      { source: "/admin/:path*", headers: [{ key: "X-Frame-Options", value: "DENY" }, { key: "Cache-Control", value: "no-store" }] },
+    ];
+  },
   turbopack: {
     rules: {
       "*.css": {

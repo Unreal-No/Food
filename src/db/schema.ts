@@ -113,7 +113,7 @@ export const orders = pgTable("orders", {
   couponCode: text("coupon_code").notNull().default(""),
   total: integer("total").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-}, (t) => [index("orders_shop_created_idx").on(t.shopId, t.createdAt)]);
+}, (t) => [index("orders_shop_created_idx").on(t.shopId, t.createdAt), uniqueIndex("orders_shop_code_uq").on(t.shopId, t.code)]);
 
 export const orderItems = pgTable("order_items", {
   id: uuid("id").primaryKey().defaultRandom(),

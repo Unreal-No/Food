@@ -178,4 +178,4 @@ audit_logs
 | **P1 3D Inspect** ✅ (เหลือ asset worker) | ตัวดูสินค้า GLB/turntable, live variant preview, Media Studio + asset worker |
 | **P2 Walk-in** ✅ (เหลือ splat + ลากวางใน 3D) | ฉาก template 3 แบบ, camera rail, hotspots, Scene Editor, รองรับ splat |
 | **P3 Operations** ✅ | ออเดอร์ Realtime, KDS, QR โต๊ะ, LINE แจ้งเตือน, สต็อก |
-| **P4 Growth** ✅ (เหลือ Analytics) | AI Barista, อ่านรูปเมนู, สมาชิก/คูปอง, AR, Analytics |
+| **P4 Growth** ✅ | AI Barista, อ่านรูปเมนู, สมาชิก/คูปอง, AR, Analytics |

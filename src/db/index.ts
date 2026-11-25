@@ -16,7 +16,9 @@ async function init(): Promise<DB> {
   if (process.env.DATABASE_URL) {
     const postgres = (await import("postgres")).default;
     const sql = postgres(process.env.DATABASE_URL, { prepare: false });
-    g.__listen = (ch, cb) => sql.listen(ch, cb);
+    // LISTEN ใช้ผ่าน transaction pooler ไม่ได้ → ใช้ DATABASE_LISTEN_URL (session/direct) ถ้ามี
+    const listener = process.env.DATABASE_LISTEN_URL ? postgres(process.env.DATABASE_LISTEN_URL, { max: 1 }) : sql;
+    g.__listen = (ch, cb) => listener.listen(ch, cb);
     return drizzlePg(sql, { schema });
   }
   const { PGlite } = await import("@electric-sql/pglite");

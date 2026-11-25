@@ -59,8 +59,9 @@ export async function placeOrder(slug: string, raw: unknown): Promise<{ id: stri
 
   const db = await getDb();
   try {
-    const order = await db.transaction(async (tx) => {
-      const [{ n }] = await tx.select({ n: sql<number>`count(*)::int` }).from(s.orders).where(eq(s.orders.shopId, shop.id));
+    // เลขออเดอร์ = เลขล่าสุด + 1 · unique (shop, code) กันซ้ำ → ชนกันตอนสั่งพร้อมกันก็ลองใหม่
+    const create = () => db.transaction(async (tx) => {
+      const [{ n }] = await tx.select({ n: sql<number>`coalesce(max(${s.orders.code}::int), 0)::int` }).from(s.orders).where(eq(s.orders.shopId, shop.id));
       const [order] = await tx.insert(s.orders).values({
         shopId: shop.id, code: String(n + 1).padStart(4, "0"), channel: input.channel, payment: input.payment,
         tableCode: input.channel === "dine_in" ? input.tableCode : "", customerName: input.customerName,
@@ -81,6 +82,13 @@ export async function placeOrder(slug: string, raw: unknown): Promise<{ id: stri
       }
       return order;
     });
+    let order: Awaited<ReturnType<typeof create>> | undefined;
+    for (let attempt = 0; !order; attempt++) {
+      try { order = await create(); } catch (e) {
+        const code = (e as { code?: string; cause?: { code?: string } }).cause?.code ?? (e as { code?: string }).code;
+        if (code !== "23505" || attempt >= 4) throw e;
+      }
+    }
     const id = order.id;
     await publish({ type: "order", shopId: shop.id, orderId: id, status: "pending_payment", code: order.code });
     after(() => notifyShop(shop.id, [

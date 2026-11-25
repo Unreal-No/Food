@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "orders_shop_code_uq" ON "orders" USING btree ("shop_id","code");

@@ -1,13 +1,15 @@
 import "server-only";
 import { eq } from "drizzle-orm";
 import { getDb, schema as s } from "@/db";
+import { unseal } from "./secret";
 
 /** แจ้งเตือนร้านผ่าน LINE Messaging API (push) · ไม่ได้ตั้งค่า = ข้าม · ล้มเหลวไม่กระทบการสั่งซื้อ */
 export async function notifyShop(shopId: string, text: string) {
   try {
     const db = await getDb();
     const [row] = await db.select({ i: s.shops.integrations }).from(s.shops).where(eq(s.shops.id, shopId));
-    const { lineToken, lineTo } = row?.i ?? {};
+    const { lineTo } = row?.i ?? {};
+    const lineToken = unseal(row?.i?.lineToken);
     if (!lineToken || !lineTo) return false;
     const r = await fetch(`${process.env.LINE_API_BASE ?? "https://api.line.me"}/v2/bot/message/push`, {
       method: "POST",

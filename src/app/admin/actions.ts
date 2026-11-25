@@ -6,19 +6,20 @@ import { updateTag } from "next/cache";
 import { after } from "next/server";
 import { getDb, publish, schema as s } from "@/db";
 import { shopTag } from "@/lib/catalog";
-import { can, login as doLogin, logoutSession, requireShop } from "@/lib/auth";
+import { can, login as doLogin, logoutSession, requireSession, requireShop } from "@/lib/auth";
 import type { Perm } from "@/lib/perms";
 import { saveUpload } from "@/lib/storage";
 import { randomBytes } from "node:crypto";
 import { hashPassword } from "@/lib/password";
 import { notifyShop } from "@/lib/notify";
+import { seal } from "@/lib/secret";
 import { normCode, pointsFor } from "@/lib/coupons";
 import type { OrderStatus } from "@/db/schema";
 
 type Result = { ok: true; id?: string } | { ok: false; error: string };
 const satang = z.number().min(0).max(1_000_000).transform((b) => Math.round(b * 100));
 const opt = z.uuid().optional();
-const mediaUrl = z.string().max(300).regex(/^(\/media\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.[a-z]{3,4}|https:\/\/\S+)$/, "URL สื่อไม่ถูกต้อง");
+const mediaUrl = z.string().max(300).regex(/^(\/media\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.[a-z]{3,4}|https?:\/\/\S+)$/, "URL สื่อไม่ถูกต้อง");
 const Params = z.record(z.string().max(20), z.string().max(20)).optional();
 const Parts = z.array(z.string().max(30)).max(20).optional();
 const VisualSchema = z.object({ preset: z.string().max(20).optional(), params: Params, show: Parts, hide: Parts, scale: z.number().min(0.5).max(2).optional() });
@@ -319,7 +320,7 @@ export async function saveLine(slug: string, raw: unknown): Promise<Result> {
     const { shop, db } = await ctx(slug, "settings");
     const d = z.object({ lineTo: z.string().trim().max(64), lineToken: z.string().trim().max(400).optional(), clear: z.boolean().optional() }).parse(raw);
     const cur = shop.integrations ?? {};
-    const next = d.clear ? {} : { ...cur, lineTo: d.lineTo, ...(d.lineToken ? { lineToken: d.lineToken } : {}) };
+    const next = d.clear ? {} : { ...cur, lineTo: d.lineTo, ...(d.lineToken ? { lineToken: seal(d.lineToken) } : {}) };
     await db.update(s.shops).set({ integrations: next }).where(eq(s.shops.id, shop.id));
     return { ok: true };
   } catch (e) { return fail(e); }
@@ -369,5 +370,38 @@ export async function deleteCoupon(slug: string, id: string): Promise<Result> {
     const { shop, db } = await ctx(slug, "marketing");
     await db.delete(s.coupons).where(and(eq(s.coupons.id, id), eq(s.coupons.shopId, shop.id)));
     return { ok: true };
+  } catch (e) { return fail(e); }
+}
+
+/* ---------- สร้างร้านใหม่ (ผู้ดูแลระบบเท่านั้น) ---------- */
+const PRESET = {
+  cafe: { theme: { primary: "#6b3e26", accent: "#d9a066", bg: "#f7f1e8", surface: "#fffaf3", text: "#2a1a12", font: "classic" as const, heroEmoji: "☕" }, hours: { open: "07:00", close: "18:00", days: [0, 1, 2, 3, 4, 5, 6] } },
+  restaurant: { theme: { primary: "#c2410c", accent: "#facc15", bg: "#fff7ed", surface: "#ffffff", text: "#1c1917", font: "modern" as const, heroEmoji: "🍳" }, hours: { open: "10:00", close: "21:00", days: [1, 2, 3, 4, 5, 6] } },
+  retail: { theme: { primary: "#1e1b4b", accent: "#a78bfa", bg: "#f5f5f4", surface: "#ffffff", text: "#0c0a09", font: "modern" as const, heroEmoji: "🛍️" }, hours: { open: "10:00", close: "20:00", days: [0, 1, 2, 3, 4, 5, 6] } },
+};
+const RESERVED = new Set(["admin", "api", "media", "_next", "login", "static"]);
+const ShopInput = z.object({
+  name: z.string().trim().min(1, "กรุณาใส่ชื่อร้าน").max(60),
+  slug: z.string().trim().toLowerCase().regex(/^[a-z0-9-]{3,30}$/, "ลิงก์ร้าน a-z 0-9 - (3–30 ตัว)").refine((v) => !RESERVED.has(v), "ชื่อนี้สงวนไว้"),
+  type: z.enum(["cafe", "restaurant", "retail"]),
+  ownerName: z.string().trim().min(1).max(40),
+  ownerUsername: z.string().trim().toLowerCase().regex(/^[a-z0-9._-]{3,32}$/, "ชื่อผู้ใช้ a-z 0-9 . _ - (3–32 ตัว)").refine((u) => u !== "admin", "ห้ามใช้ชื่อ admin"),
+  ownerPassword: z.string().min(8, "รหัสผ่านอย่างน้อย 8 ตัว").max(72),
+});
+export async function createShop(raw: unknown): Promise<Result & { slug?: string }> {
+  try {
+    const ses = await requireSession();
+    if (!ses.super) throw new Error("เฉพาะผู้ดูแลระบบ");
+    const d = ShopInput.parse(raw);
+    const db = await getDb();
+    if ((await db.select({ id: s.shops.id }).from(s.shops).where(eq(s.shops.slug, d.slug))).length) throw new Error("ลิงก์ร้านนี้ถูกใช้แล้ว");
+    if ((await db.select({ id: s.staff.id }).from(s.staff).where(eq(s.staff.username, d.ownerUsername))).length) throw new Error("ชื่อผู้ใช้นี้ถูกใช้แล้ว");
+    const hash = await hashPassword(d.ownerPassword);
+    await db.transaction(async (tx) => {
+      const [shop] = await tx.insert(s.shops).values({ slug: d.slug, name: d.name, type: d.type, ...PRESET[d.type] }).returning({ id: s.shops.id });
+      await tx.insert(s.staff).values({ shopId: shop.id, name: d.ownerName, username: d.ownerUsername, role: "owner", passwordHash: hash });
+    });
+    updateTag("shops");
+    return { ok: true, slug: d.slug };
   } catch (e) { return fail(e); }
 }
