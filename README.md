@@ -56,8 +56,17 @@ npm run dev        # http://localhost:3000  (สร้าง DB + ข้อม�
 - **แจ้งเตือน LINE** (Messaging API) เมื่อมีออเดอร์ใหม่/รับเงิน · token เก็บฝั่ง server ไม่ส่งไป browser
 - **พนักงานแยกสิทธิ์**: เจ้าของ / ผู้จัดการ / แคชเชียร์ / ครัว · รหัสผ่าน scrypt · ไม่มีสิทธิ์ = 404
 
+## ทำแล้ว (P4 · เติบโต)
+- **ผู้ช่วย AI หน้าร้าน** (Claude Haiku 5.5): แชตแนะนำเมนูจากของที่มีจริง แสดงการ์ดสินค้าให้แตะสั่ง · กรอง id ที่ไม่มีจริงทิ้ง · cache เมนู · จำกัด 20 ครั้ง/10 นาที/IP
+- **นำเข้าเมนูจากรูป** (Claude Sonnet 5.5 vision + structured output): ถ่ายรูปเมนู → ตรวจแก้ → นำเข้าทั้งหมวด/ราคา/แบบย่อย · เปิด server-side fallback เมื่อถูกปฏิเสธ
+- **คูปอง**: ลด %/บาท, ยอดขั้นต่ำ, จำกัดจำนวนครั้ง (กันใช้เกินเมื่อสั่งพร้อมกัน), วันหมดอายุ · ตัวอย่าง `WELCOME10`
+- **สมาชิกสะสมแต้ม** จากเบอร์โทร: 1 แต้ม/฿10 เมื่อออเดอร์เสร็จสิ้น · หน้า "คูปอง & สมาชิก"
+- **AR วางบนโต๊ะจริง**: iPhone/iPad = Quick Look (สร้าง USDZ ในเครื่องจากโมเดล 3D) · Android = Scene Viewer (สินค้าที่เป็นไฟล์ .glb)
+
+> AI เปิดเมื่อตั้ง `ANTHROPIC_API_KEY` · เปลี่ยนรุ่นได้ด้วย `BARISTA_MODEL`, `MENU_IMPORT_MODEL`
+
 ## Production
 ตั้ง `DATABASE_URL` (Supabase Postgres), `ADMIN_PASSWORD`, `AUTH_SECRET`, `SITE_URL` (ใช้สร้าง QR โต๊ะ) แล้ว `npm run db:migrate && npm run build`
 
 ## ถัดไป
-P1.5 บีบอัด GLB อัตโนมัติ (gltf-transform) + ย้ายไฟล์ไป Supabase Storage · P2.5 ฉากสแกนร้านจริง (Gaussian Splat) · P4 AI Barista, อ่านรูปเมนู, สมาชิก/คูปอง, AR
+P1.5 บีบอัด GLB อัตโนมัติ (gltf-transform) + ย้ายไฟล์ไป Supabase Storage · P2.5 ฉากสแกนร้านจริง (Gaussian Splat) · แดชบอร์ดสถิติ (กราฟยอดขาย) · ใช้แต้มแลกส่วนลด · AR Android สำหรับโมเดลสำเร็จรูป

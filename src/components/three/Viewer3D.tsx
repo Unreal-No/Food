@@ -8,6 +8,7 @@ import type { Media } from "@/db/schema";
 import type { Resolved } from "@/lib/visual";
 import { activeParts, presetParams } from "@/lib/presets";
 import { MODELS } from "./models";
+import { ArButton } from "./ArButton";
 
 /** GLB: node ชื่อขึ้นต้น "opt_" ซ่อนไว้จนกว่าจะถูก show · params จับคู่กับชื่อ material */
 export function Glb({ url, r }: { url: string; r: Resolved }) {
@@ -40,10 +41,11 @@ function Scaled({ s, children }: { s: number; children: React.ReactNode }) {
   return <group ref={g}>{children}</group>;
 }
 
-export default function Viewer3D({ media, resolved }: { media: Media; resolved: Resolved }) {
+export default function Viewer3D({ media, resolved, title = "" }: { media: Media; resolved: Resolved; title?: string }) {
   const [dpr, setDpr] = useState(1.75);
   const [touched, setTouched] = useState(false);
   const controls = useRef<OrbitImpl>(null);
+  const model = useRef<THREE.Group>(null);
   const reduced = typeof window !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   return (
@@ -58,7 +60,7 @@ export default function Viewer3D({ media, resolved }: { media: Media; resolved: 
           <Lightformer form="rect" intensity={1.2} color="#ffe6c7" position={[5, 2, 3]} rotation-y={-Math.PI / 2} scale={[4, 4, 1]} />
         </Environment>
         <Suspense fallback={null}>
-          <Scaled s={resolved.scale}><Model media={media} r={resolved} /></Scaled>
+          <group ref={model}><Scaled s={resolved.scale}><Model media={media} r={resolved} /></Scaled></group>
         </Suspense>
         <ContactShadows position-y={-0.001} opacity={0.42} blur={2.6} scale={9} far={3.5} resolution={512} />
         <OrbitControls
@@ -72,6 +74,7 @@ export default function Viewer3D({ media, resolved }: { media: Media; resolved: 
           ลากเพื่อหมุน · หยิก/เลื่อนเพื่อซูม
         </span>
       </div>
+      <ArButton target={model} media={media} title={title} />
       {touched && (
         <button onClick={() => { controls.current?.reset(); setTouched(false); }}
           className="absolute bottom-3 right-3 rounded-full bg-card/85 px-3 py-1.5 text-xs shadow backdrop-blur">↺ มุมเดิม</button>

@@ -9,6 +9,7 @@ import { has3D, selectionVisual } from "@/lib/visual";
 import { clearHash, getHash, hasWebGL, noopSubscribe, subscribeHash } from "@/lib/browser";
 import { WalkIn, type WalkData } from "./WalkIn";
 import { lookupTable } from "@/app/admin/actions";
+import { Barista } from "./Barista";
 export { ProductStage };
 
 type Category = { id: string; name: string; icon: string };
@@ -203,7 +204,7 @@ export function CartPanel({ shop, onClose }: { shop: string; onClose: () => void
 }
 
 /* ---------- หน้าร้าน ---------- */
-export function Storefront({ shop, categories, products, walk }: { shop: string; categories: Category[]; products: CatalogProduct[]; walk?: WalkData }) {
+export function Storefront({ shop, categories, products, walk, ai, shopType = "cafe" }: { shop: string; categories: Category[]; products: CatalogProduct[]; walk?: WalkData; ai?: boolean; shopType?: string }) {
   const walking = useSyncExternalStore(subscribeHash, getHash, () => "") === "#walk";
   // สแกน QR โต๊ะ (?t=token) → ตรวจกับ server แล้วจำโต๊ะไว้ในตะกร้า
   const qrToken = useSyncExternalStore(noopSubscribe, () => new URLSearchParams(location.search).get("t"), () => null);
@@ -294,6 +295,7 @@ export function Storefront({ shop, categories, products, walk }: { shop: string;
         </button>
       )}
 
+      {ai && <Barista shop={shop} shopType={shopType} products={products} onOpen={setOpenId} />}
       {walk && gl && walking && <WalkIn data={walk} onSelect={setOpenId} onClose={clearHash} paused={!!current} />}
       {current && <ProductSheet key={current.id} p={current} shop={shop} onClose={() => setOpenId(null)} />}
       {cartOpen && <CartPanel shop={shop} onClose={() => setCartOpen(false)} />}

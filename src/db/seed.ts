@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { shops, categories, products, productVariants, optionGroups, options, productOptionGroups, staff, tables } from "./schema";
+import { shops, categories, products, productVariants, optionGroups, options, productOptionGroups, staff, tables, coupons } from "./schema";
 import { hashPassword } from "@/lib/password";
 import type { DB } from "./index";
 import type { Media, Visual } from "./schema";
@@ -90,6 +90,8 @@ export async function seedIfEmpty(db: DB) {
       await db.insert(staff).values({ shopId: shop.id, name, username, role, passwordHash: await hashPassword(pw) });
     }
     await db.insert(tables).values(["A1", "A2", "A3", "B1", "B2"].map((code) => ({ shopId: shop.id, code, token: randomBytes(12).toString("base64url") })));
+
+    await db.insert(coupons).values({ shopId: shop.id, code: "WELCOME10", kind: "percent", value: 10, minTotal: B(100) });
 
     const cats = await db.insert(categories)
       .values(s.categories.map(([name, icon], i) => ({ shopId: shop.id, name, icon, sort: i })))

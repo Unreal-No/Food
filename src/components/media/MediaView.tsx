@@ -28,7 +28,7 @@ export function MediaView({ media, resolved, emoji, alt }: { media?: Media; reso
   if (!gl) return flat;
   return (
     <div className="relative size-full bg-[radial-gradient(circle_at_50%_40%,color-mix(in_oklab,var(--c-accent)_45%,transparent),transparent_70%),linear-gradient(160deg,color-mix(in_oklab,var(--c-accent)_15%,var(--c-surface)),color-mix(in_oklab,var(--c-primary)_10%,var(--c-surface)))]">
-      <Fallback fallback={flat}><Viewer3D media={media} resolved={resolved} /></Fallback>
+      <Fallback fallback={flat}><Viewer3D media={media} resolved={resolved} title={alt} /></Fallback>
     </div>
   );
 }

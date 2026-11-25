@@ -18,6 +18,8 @@ Next 16: เปิด `cacheComponents` — อ่านข้อมูลสด
 - สิทธิ์: `lib/perms.ts` (บทบาท → Perm) · ทุกหน้า/ action เรียก `requireShop(slug, perm)` หรือ `ctx(slug, perm)`
 - Realtime: `publish()` หลังเปลี่ยนออเดอร์ (db/index.ts) → SSE `/api/admin/[shop]/events`, `/api/orders/[id]/events` → `<LiveRefresh>`
 - ห้ามส่ง `shops.integrations` (token) ไป client
+- AI: client/รุ่นใน `lib/ai.ts` · ใช้ structured output (`zodOutputFormat`) · ทดสอบด้วย `ANTHROPIC_BASE_URL` ชี้ mock
+- คูปอง/แต้ม: `lib/coupons.ts` · server คำนวณส่วนลดใหม่ตอนสั่ง + `claimCoupon` ใน transaction
 
 ## กฎ
 - ตอบสั้น กระชับ

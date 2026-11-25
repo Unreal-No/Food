@@ -1,5 +1,5 @@
 import {
-  pgTable, uuid, text, integer, jsonb, timestamp, boolean, primaryKey, index,
+  pgTable, uuid, text, integer, jsonb, timestamp, boolean, primaryKey, index, uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 // ราคาเก็บเป็น "สตางค์" (integer) เพื่อความแม่นยำ
@@ -109,6 +109,8 @@ export const orders = pgTable("orders", {
   customerPhone: text("customer_phone").notNull().default(""),
   note: text("note").notNull().default(""),
   status: text("status").$type<OrderStatus>().notNull().default("pending_payment"),
+  discount: integer("discount").notNull().default(0),
+  couponCode: text("coupon_code").notNull().default(""),
   total: integer("total").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [index("orders_shop_created_idx").on(t.shopId, t.createdAt)]);
@@ -146,3 +148,29 @@ export const staff = pgTable("staff", {
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [index("staff_shop_idx").on(t.shopId)]);
+
+// คูปอง: percent = ลด % (value = 1–100) · amount = ลดเป็นเงิน (value = สตางค์)
+export const coupons = pgTable("coupons", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  shopId: uuid("shop_id").notNull().references(() => shops.id, { onDelete: "cascade" }),
+  code: text("code").notNull(),
+  kind: text("kind").$type<"percent" | "amount">().notNull(),
+  value: integer("value").notNull(),
+  minTotal: integer("min_total").notNull().default(0),
+  maxUses: integer("max_uses"),
+  used: integer("used").notNull().default(0),
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
+  active: boolean("active").notNull().default(true),
+}, (t) => [uniqueIndex("coupons_shop_code_uq").on(t.shopId, t.code)]);
+
+// สมาชิก (ระบุด้วยเบอร์โทรต่อร้าน) · แต้ม = 1 ต่อทุก ฿10 เมื่อออเดอร์เสร็จสิ้น
+export const customers = pgTable("customers", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  shopId: uuid("shop_id").notNull().references(() => shops.id, { onDelete: "cascade" }),
+  phone: text("phone").notNull(),
+  name: text("name").notNull().default(""),
+  points: integer("points").notNull().default(0),
+  totalSpent: integer("total_spent").notNull().default(0),
+  visits: integer("visits").notNull().default(0),
+  lastVisit: timestamp("last_visit", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [uniqueIndex("customers_shop_phone_uq").on(t.shopId, t.phone)]);

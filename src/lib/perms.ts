@@ -1,11 +1,11 @@
 import type { Role } from "@/db/schema";
 
 // สิทธิ์ตามบทบาท (ใช้ได้ทั้ง server และ client)
-export type Perm = "dashboard" | "orders" | "kitchen" | "catalog" | "scene" | "tables" | "settings" | "staff";
+export type Perm = "dashboard" | "orders" | "kitchen" | "catalog" | "scene" | "tables" | "marketing" | "settings" | "staff";
 
 export const PERMS: Record<Role, Perm[]> = {
-  owner: ["dashboard", "orders", "kitchen", "catalog", "scene", "tables", "settings", "staff"],
-  manager: ["dashboard", "orders", "kitchen", "catalog", "scene", "tables"],
+  owner: ["dashboard", "orders", "kitchen", "catalog", "scene", "tables", "marketing", "settings", "staff"],
+  manager: ["dashboard", "orders", "kitchen", "catalog", "scene", "tables", "marketing"],
   cashier: ["dashboard", "orders", "kitchen"],
   kitchen: ["kitchen"],
 };

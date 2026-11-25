@@ -8,6 +8,7 @@ import { OpenStatus } from "@/components/store/OpenStatus";
 import { Storefront } from "@/components/store/Storefront";
 import { assignSlots, resolveScene } from "@/lib/scene";
 import { baht, fromPrice } from "@/lib/pricing";
+import { aiEnabled } from "@/lib/ai";
 
 export async function generateMetadata({ params }: PageProps<"/[shop]">): Promise<Metadata> {
   const data = await getStorefront((await params).shop);
@@ -53,7 +54,7 @@ async function Store({ params }: { params: PageProps<"/[shop]">["params"] }) {
           </div>
         </div>
       </header>
-      <Storefront shop={shop.slug} categories={categories} products={products} walk={walk} />
+      <Storefront shop={shop.slug} categories={categories} products={products} walk={walk} ai={aiEnabled()} shopType={shop.type} />
     </ThemeScope>
   );
 }

@@ -7,7 +7,7 @@ import { logout } from "@/app/admin/actions";
 const NAV: [string, string, string, Perm][] = [
   ["", "📊", "ภาพรวม", "dashboard"], ["/orders", "🧾", "ออเดอร์", "orders"], ["/kitchen", "👨‍🍳", "จอครัว", "kitchen"],
   ["/products", "🍰", "สินค้า", "catalog"], ["/options", "🧩", "ตัวเลือกเสริม", "catalog"], ["/scene", "🏬", "ฉากร้าน 3D", "scene"],
-  ["/tables", "🪑", "โต๊ะ & QR", "tables"], ["/staff", "👥", "พนักงาน", "staff"], ["/settings", "🎨", "ตั้งค่าร้าน", "settings"],
+  ["/tables", "🪑", "โต๊ะ & QR", "tables"], ["/marketing", "🎟️", "คูปอง & สมาชิก", "marketing"], ["/import", "📸", "นำเข้าเมนูจากรูป", "catalog"], ["/staff", "👥", "พนักงาน", "staff"], ["/settings", "🎨", "ตั้งค่าร้าน", "settings"],
 ];
 
 export function AdminNav({ perms, who }: { perms: Perm[]; who: string }) {

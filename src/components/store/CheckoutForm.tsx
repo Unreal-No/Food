@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { useCart, useCartItems } from "@/lib/cart";
 import { baht } from "@/lib/pricing";
-import { placeOrder } from "@/app/actions/order";
+import { checkCoupon, placeOrder } from "@/app/actions/order";
 import { ProductStage, useHydrated } from "./Storefront";
 
 const input = "h-12 w-full rounded-2xl bg-card px-4 ring-1 ring-black/10 outline-none focus:ring-2 focus:ring-brand";
@@ -19,14 +19,23 @@ export function CheckoutForm({ shop, shopName }: { shop: string; shopName: strin
   const [pending, start] = useTransition();
   const [error, setError] = useState("");
   const [f, setF] = useState({ channel: "takeaway" as "dine_in" | "takeaway", tableCode: "", customerName: "", customerPhone: "", note: "" });
-  const total = items.reduce((a, i) => a + i.unitPrice * i.qty, 0);
+  const subtotal = items.reduce((a, i) => a + i.unitPrice * i.qty, 0);
+  const [coupon, setCoupon] = useState("");
+  const [promo, setPromo] = useState<{ code: string; discount: number; at: number } | null>(null);
+  const [promoErr, setPromoErr] = useState("");
+  const active = promo && promo.at === subtotal ? promo : null; // ตะกร้าเปลี่ยน = ต้องกดใช้ใหม่
+  const total = subtotal - (active?.discount ?? 0);
+  const applyCoupon = () => start(async () => {
+    const r = await checkCoupon(shop, coupon, subtotal);
+    if ("error" in r) { setPromo(null); setPromoErr(r.error ?? ""); } else { setPromo({ ...r, at: subtotal }); setPromoErr(""); }
+  });
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     start(async () => {
       const r = await placeOrder(shop, {
-        ...f, payment, ...(table ? { channel: "dine_in" as const, tableToken: table.token, tableCode: table.code } : {}),
+        ...f, payment, couponCode: active?.code ?? "", ...(table ? { channel: "dine_in" as const, tableToken: table.token, tableCode: table.code } : {}),
         items: items.map((i) => ({ productId: i.productId, variantId: i.variantId, optionIds: i.optionIds, qty: i.qty })),
       });
       if ("error" in r) return setError(r.error);
@@ -77,6 +86,16 @@ export function CheckoutForm({ shop, shopName }: { shop: string; shopName: strin
           <textarea className={`${input} h-24 py-3`} value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} maxLength={200} />
         </label>
 
+        <div className="space-y-1.5 text-sm font-medium">
+          <span>คูปองส่วนลด</span>
+          <div className="flex gap-2">
+            <input className={input} value={coupon} onChange={(e) => setCoupon(e.target.value.toUpperCase())} placeholder="เช่น WELCOME10" aria-label="คูปอง" />
+            <button type="button" disabled={!coupon.trim() || pending} onClick={applyCoupon} className="h-12 shrink-0 rounded-2xl bg-ink px-5 text-card disabled:opacity-40">ใช้</button>
+          </div>
+          {active && <p className="text-emerald-700">✓ {active.code} ลด {baht(active.discount)}</p>}
+          {promoErr && <p className="text-red-600">{promoErr}</p>}
+        </div>
+
         {error && <p className="rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
         <button disabled={pending || !items.length} className="flex h-14 w-full items-center justify-between rounded-full bg-brand px-6 font-medium text-card disabled:opacity-50">
           <span>{pending ? "กำลังส่ง…" : payment === "promptpay" ? "สั่งและชำระด้วย PromptPay" : "ยืนยันสั่ง"}</span><span className="tabular-nums">{baht(total)}</span>
@@ -96,6 +115,7 @@ export function CheckoutForm({ shop, shopName }: { shop: string; shopName: strin
             <span className="tabular-nums">{baht(i.unitPrice * i.qty)}</span>
           </div>
         ))}
+        {active && <div className="flex justify-between border-t border-black/5 pt-3 text-sm text-emerald-700"><span>ส่วนลด {active.code}</span><span>−{baht(active.discount)}</span></div>}
         <div className="flex justify-between border-t border-black/5 pt-3 font-display text-lg font-semibold"><span>รวม</span><span>{baht(total)}</span></div>
       </aside>
     </main>

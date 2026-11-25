@@ -1,6 +1,6 @@
 "use server";
 import { z } from "zod";
-import { and, eq, inArray, ne, notInArray } from "drizzle-orm";
+import { and, eq, inArray, ne, notInArray, sql } from "drizzle-orm";
 import { redirect, unstable_rethrow } from "next/navigation";
 import { updateTag } from "next/cache";
 import { after } from "next/server";
@@ -12,6 +12,7 @@ import { saveUpload } from "@/lib/storage";
 import { randomBytes } from "node:crypto";
 import { hashPassword } from "@/lib/password";
 import { notifyShop } from "@/lib/notify";
+import { normCode, pointsFor } from "@/lib/coupons";
 import type { OrderStatus } from "@/db/schema";
 
 type Result = { ok: true; id?: string } | { ok: false; error: string };
@@ -219,8 +220,20 @@ export async function setOrderStatus(slug: string, id: string, status: OrderStat
     const st = z.enum(["pending_payment", "paid", "preparing", "ready", "completed", "cancelled"]).parse(status);
     const { ses, shop, db } = await ctx(slug, "kitchen");
     if (!can(ses, "orders") && st !== "preparing" && st !== "ready") throw new Error("ครัวเปลี่ยนได้เฉพาะ กำลังทำ/พร้อมเสิร์ฟ");
-    const [o] = await db.update(s.orders).set({ status: st }).where(and(eq(s.orders.id, id), eq(s.orders.shopId, shop.id))).returning({ code: s.orders.code });
+    const [prev] = await db.select({ status: s.orders.status }).from(s.orders).where(and(eq(s.orders.id, id), eq(s.orders.shopId, shop.id)));
+    if (!prev) throw new Error("ไม่พบออเดอร์");
+    const [o] = await db.update(s.orders).set({ status: st }).where(and(eq(s.orders.id, id), eq(s.orders.shopId, shop.id)))
+      .returning({ code: s.orders.code, phone: s.orders.customerPhone, name: s.orders.customerName, total: s.orders.total });
     if (!o) throw new Error("ไม่พบออเดอร์");
+    if (st === "completed" && prev.status !== "completed" && o.phone) {
+      // สะสมแต้มสมาชิก (ครั้งเดียวต่อออเดอร์)
+      const pts = pointsFor(o.total);
+      await db.insert(s.customers).values({ shopId: shop.id, phone: o.phone, name: o.name, points: pts, totalSpent: o.total, visits: 1 })
+        .onConflictDoUpdate({ target: [s.customers.shopId, s.customers.phone], set: {
+          points: sql`${s.customers.points} + ${pts}`, totalSpent: sql`${s.customers.totalSpent} + ${o.total}`,
+          visits: sql`${s.customers.visits} + 1`, lastVisit: sql`now()`, name: o.name,
+        } });
+    }
     await publish({ type: "order", shopId: shop.id, orderId: id, status: st, code: o.code });
     if (st === "paid") after(() => notifyShop(shop.id, `💰 รับเงินแล้ว #${o.code}`));
     return { ok: true };
@@ -326,4 +339,35 @@ export async function lookupTable(slug: string, tableToken: string) {
   const [t] = await db.select({ code: s.tables.code }).from(s.tables).innerJoin(s.shops, eq(s.shops.id, s.tables.shopId))
     .where(and(eq(s.tables.token, tableToken), eq(s.shops.slug, slug)));
   return t?.code ?? null;
+}
+
+/* ---------- คูปอง ---------- */
+const CouponInput = z.object({
+  id: opt, code: z.string().transform(normCode).pipe(z.string().regex(/^[A-Z0-9_-]{3,20}$/, "รหัสคูปอง A-Z 0-9 (3–20 ตัว)")),
+  kind: z.enum(["percent", "amount"]), value: z.number().positive("ส่วนลดต้องมากกว่า 0"),
+  minTotal: z.number().min(0).default(0), maxUses: z.number().int().positive().nullable(),
+  expiresAt: z.string().nullable(), active: z.boolean(),
+}).refine((c) => c.kind !== "percent" || c.value <= 100, "ลดได้ไม่เกิน 100%");
+export async function saveCoupon(slug: string, raw: unknown): Promise<Result> {
+  try {
+    const { shop, db } = await ctx(slug, "marketing");
+    const d = CouponInput.parse(raw);
+    const row = {
+      code: d.code, kind: d.kind, value: d.kind === "percent" ? Math.round(d.value) : Math.round(d.value * 100),
+      minTotal: Math.round(d.minTotal * 100), maxUses: d.maxUses, active: d.active,
+      expiresAt: d.expiresAt ? new Date(`${d.expiresAt}T23:59:59+07:00`) : null,
+    };
+    const [dup] = await db.select({ id: s.coupons.id }).from(s.coupons).where(and(eq(s.coupons.shopId, shop.id), eq(s.coupons.code, d.code), d.id ? ne(s.coupons.id, d.id) : undefined));
+    if (dup) throw new Error("มีรหัสคูปองนี้แล้ว");
+    if (d.id) await db.update(s.coupons).set(row).where(and(eq(s.coupons.id, d.id), eq(s.coupons.shopId, shop.id)));
+    else await db.insert(s.coupons).values({ ...row, shopId: shop.id });
+    return { ok: true };
+  } catch (e) { return fail(e); }
+}
+export async function deleteCoupon(slug: string, id: string): Promise<Result> {
+  try {
+    const { shop, db } = await ctx(slug, "marketing");
+    await db.delete(s.coupons).where(and(eq(s.coupons.id, id), eq(s.coupons.shopId, shop.id)));
+    return { ok: true };
+  } catch (e) { return fail(e); }
 }

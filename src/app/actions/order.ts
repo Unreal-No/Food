@@ -8,6 +8,7 @@ import { notifyShop } from "@/lib/notify";
 import { baht } from "@/lib/pricing";
 import { getShop, loadCatalog, shopTag } from "@/lib/catalog";
 import { priceLine } from "@/lib/pricing";
+import { claimCoupon, evalCoupon } from "@/lib/coupons";
 
 const Input = z.object({
   channel: z.enum(["dine_in", "takeaway"]),
@@ -16,6 +17,7 @@ const Input = z.object({
   customerPhone: z.string().regex(/^(0\d{8,9})?$/, "เบอร์โทรไม่ถูกต้อง").default(""),
   tableToken: z.string().max(64).optional(),
   payment: z.enum(["promptpay", "counter"]).default("promptpay"),
+  couponCode: z.string().max(30).default(""),
   note: z.string().max(200).default(""),
   items: z.array(z.object({
     productId: z.uuid(), variantId: z.uuid().optional(),
@@ -49,7 +51,11 @@ export async function placeOrder(slug: string, raw: unknown): Promise<{ id: stri
     if (!r.ok) return { error: `${p.name}: ${r.errors[0]}` };
     lines.push({ p, it, r });
   }
-  const total = lines.reduce((a, l) => a + l.r.total, 0);
+  const subtotal = lines.reduce((a, l) => a + l.r.total, 0);
+  const promo = input.couponCode.trim() ? await evalCoupon(shop.id, input.couponCode, subtotal) : null;
+  if (promo && "error" in promo) return { error: `คูปอง: ${promo.error}` };
+  const discount = promo?.discount ?? 0;
+  const total = subtotal - discount;
 
   const db = await getDb();
   try {
@@ -58,8 +64,9 @@ export async function placeOrder(slug: string, raw: unknown): Promise<{ id: stri
       const [order] = await tx.insert(s.orders).values({
         shopId: shop.id, code: String(n + 1).padStart(4, "0"), channel: input.channel, payment: input.payment,
         tableCode: input.channel === "dine_in" ? input.tableCode : "", customerName: input.customerName,
-        customerPhone: input.customerPhone, note: input.note, total,
+        customerPhone: input.customerPhone, note: input.note, total, discount, couponCode: promo?.coupon.code ?? "",
       }).returning({ id: s.orders.id, code: s.orders.code });
+      if (promo?.coupon) await claimCoupon(tx, promo.coupon.id);
       await tx.insert(s.orderItems).values(lines.map(({ p, it, r }) => ({
         orderId: order.id, productId: p.id, variantId: r.variant?.id, name: p.name,
         variantName: r.variant?.name ?? "", options: r.chosen, qty: it.qty, unitPrice: r.unitPrice,
@@ -79,11 +86,19 @@ export async function placeOrder(slug: string, raw: unknown): Promise<{ id: stri
     after(() => notifyShop(shop.id, [
       `🛎️ ออเดอร์ใหม่ #${order.code} · ${input.channel === "dine_in" ? `โต๊ะ ${input.tableCode}` : "กลับบ้าน"} · ${input.payment === "counter" ? "จ่ายที่เคาน์เตอร์" : "PromptPay"}`,
       ...lines.map(({ p, it, r }) => `${it.qty}× ${p.name}${r.variant ? ` (${r.variant.name})` : ""}${r.chosen.length ? ` + ${r.chosen.map((c) => c.name).join(", ")}` : ""}`),
-      `รวม ${baht(total)} · ${input.customerName}`,
+      `รวม ${baht(total)}${discount ? ` (ลด ${baht(discount)} ${promo?.coupon.code})` : ""} · ${input.customerName}`,
     ].join("\n")));
     if (lines.some((l) => l.r.variant?.stock != null)) updateTag(shopTag(slug));
     return { id };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "สั่งไม่สำเร็จ" };
   }
+}
+
+/** พรีวิวส่วนลดที่หน้าชำระเงิน (ยอดจริงคำนวณใหม่ตอนสั่ง) */
+export async function checkCoupon(slug: string, code: string, subtotal: number) {
+  const shop = await getShop(slug);
+  if (!shop || !code.trim() || !Number.isInteger(subtotal) || subtotal < 0) return { error: "ไม่พบคูปองนี้" };
+  const r = await evalCoupon(shop.id, code, subtotal);
+  return "error" in r ? { error: r.error } : { code: r.coupon.code, discount: r.discount };
 }
