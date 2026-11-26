@@ -12,6 +12,7 @@ Next 16: เปิด `cacheComponents` — อ่านข้อมูลสด
 - Preset: meta ใน `lib/presets.ts`, โมเดลใน `components/three/models.tsx` (เพิ่ม preset = เพิ่มทั้งสองที่)
 - ผลของ variant/option = `Visual` (preset/params/show/hide/scale) รวมด้วย `lib/visual.ts`
 - ฉากร้าน: ผัง/โซน/ช่องวางใน `lib/scene.ts`, ฉากใน `components/three/StoreScene.tsx` · ห้ามใช้ drei `<Html>` ใน Canvas (React root ซ้อน → error ตอน unmount) ใช้ CanvasTexture หรือ DOM overlay
+- GLB ที่อัปโหลดผ่าน `optimizeGlb()` (`lib/optimize-glb.ts`) เสมอ · migration ใหม่ต้องลง Supabase ด้วย (MCP `apply_migration` + บันทึก hash ใน `drizzle.__drizzle_migrations`)
 - three.js โหลดผ่าน `next/dynamic` เท่านั้น (ห้าม import ใน component ที่อยู่ใน initial bundle)
 
 ## หลังบ้าน

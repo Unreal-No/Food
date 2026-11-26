@@ -43,6 +43,13 @@
       "when": 1795590523711,
       "tag": "0005_order_code_unique",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1795615943771,
+      "tag": "0006_points_used",
+      "breakpoints": true
     }
   ]
 }

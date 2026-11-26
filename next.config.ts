@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
-  serverExternalPackages: ["@electric-sql/pglite"],
+  serverExternalPackages: ["@electric-sql/pglite", "sharp", "meshoptimizer", "@gltf-transform/core", "@gltf-transform/functions", "@gltf-transform/extensions"],
   experimental: { serverActions: { bodySizeLimit: "16mb" } }, // อัปโหลด GLB / ภาพทีละไฟล์
   poweredByHeader: false,
   async headers() {

@@ -8,7 +8,7 @@ import { getDb, schema as s } from "@/db";
 import { getStorefront } from "@/lib/catalog";
 import { baht } from "@/lib/pricing";
 import { promptpayPayload } from "@/lib/promptpay";
-import { pointsFor } from "@/lib/coupons";
+import { POINT_VALUE, pointsFor } from "@/lib/coupons";
 import { ThemeScope } from "@/components/theme";
 import { LiveRefresh } from "@/components/LiveRefresh";
 import { STATUS_STEPS, STATUS_LABEL } from "@/lib/status";
@@ -82,7 +82,8 @@ async function Order({ params }: { params: PageProps<"/[shop]/order/[id]">["para
               <span className="tabular-nums">{baht(i.unitPrice * i.qty)}</span>
             </li>
           ))}
-          {order.discount > 0 && <li className="flex justify-between text-emerald-700"><span>ส่วนลด {order.couponCode}</span><span>−{baht(order.discount)}</span></li>}
+          {order.discount - order.pointsUsed * POINT_VALUE > 0 && <li className="flex justify-between text-emerald-700"><span>ส่วนลด {order.couponCode}</span><span>−{baht(order.discount - order.pointsUsed * POINT_VALUE)}</span></li>}
+          {order.pointsUsed > 0 && <li className="flex justify-between text-emerald-700"><span>ใช้ {order.pointsUsed} แต้ม</span><span>−{baht(order.pointsUsed * POINT_VALUE)}</span></li>}
           <li className="flex justify-between border-t border-black/10 pt-2 font-semibold"><span>รวม</span><span>{baht(order.total)}</span></li>
           {order.status === "completed" && order.customerPhone && pointsFor(order.total) > 0 && (
             <li className="mt-3 rounded-2xl bg-accent/30 px-4 py-3 text-center">⭐ ได้รับ <b>{pointsFor(order.total)}</b> แต้มสะสม (เบอร์ {order.customerPhone.slice(0, 3)}-xxx-{order.customerPhone.slice(-4)})</li>

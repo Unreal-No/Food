@@ -22,6 +22,11 @@ export async function adminOrders(shopId: string, opts: { since?: Date; limit?: 
   const items = orders.length
     ? await db.select().from(s.orderItems).where(inArray(s.orderItems.orderId, orders.map((o) => o.id)))
     : [];
-  return orders.map((o) => ({ ...o, items: items.filter((i) => i.orderId === o.id) }));
+  const phones = [...new Set(orders.map((o) => o.customerPhone).filter(Boolean))];
+  const members = phones.length
+    ? await db.select({ phone: s.customers.phone, points: s.customers.points }).from(s.customers).where(and(eq(s.customers.shopId, shopId), inArray(s.customers.phone, phones)))
+    : [];
+  const pts = new Map(members.map((m) => [m.phone, m.points]));
+  return orders.map((o) => ({ ...o, memberPoints: pts.get(o.customerPhone) ?? 0, items: items.filter((i) => i.orderId === o.id) }));
 }
 export type AdminOrder = Awaited<ReturnType<typeof adminOrders>>[number];

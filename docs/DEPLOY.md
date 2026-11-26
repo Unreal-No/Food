@@ -2,7 +2,7 @@
 
 ## สถานะปัจจุบัน
 โปรเจกต์ Supabase **`virtual-storefront`** (ref `fjwkzojulvqpwycdltlw`, Singapore, แพ็กเกจ free) — `https://fjwkzojulvqpwycdltlw.supabase.co`
-- ✅ ตารางครบ (migrations 0000–0005) + บันทึกใน `drizzle.__drizzle_migrations` แล้ว → `npm run db:migrate` จะลงเฉพาะของใหม่
+- ✅ ตารางครบ (migrations 0000–0006) + บันทึกใน `drizzle.__drizzle_migrations` แล้ว → `npm run db:migrate` จะลงเฉพาะของใหม่
 - ✅ RLS เปิดทุกตาราง + revoke anon/authenticated (`supabase/setup.sql`) — Data API อ่าน/เขียนไม่ได้, แอปใช้ role postgres ผ่าน `DATABASE_URL`
 - ✅ bucket `media` (public, ≤15MB, เฉพาะรูป/GLB)
 - ⏳ ที่เหลือต้องทำใน Dashboard (ค่าลับ ไม่ผ่าน MCP): รหัสฐานข้อมูล + service_role key → ใส่ env ตามข้อ 2

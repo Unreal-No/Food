@@ -9,11 +9,12 @@ import { shopTag } from "@/lib/catalog";
 import { can, login as doLogin, logoutSession, requireSession, requireShop } from "@/lib/auth";
 import type { Perm } from "@/lib/perms";
 import { saveUpload } from "@/lib/storage";
+import { optimizeGlb } from "@/lib/optimize-glb";
 import { randomBytes } from "node:crypto";
 import { hashPassword } from "@/lib/password";
 import { notifyShop } from "@/lib/notify";
 import { seal } from "@/lib/secret";
-import { normCode, pointsFor } from "@/lib/coupons";
+import { normCode, pointsFor, POINT_VALUE, redeemable } from "@/lib/coupons";
 import type { OrderStatus } from "@/db/schema";
 
 type Result = { ok: true; id?: string } | { ok: false; error: string };
@@ -112,14 +113,28 @@ export async function deleteProduct(slug: string, id: string): Promise<Result> {
 
 /* ---------- อัปโหลดสื่อ (ทีละไฟล์) ---------- */
 const LIMIT: Record<string, number> = { glb: 15e6, image: 3e6 };
-export async function uploadMedia(slug: string, fd: FormData): Promise<Result & { url?: string }> {
+export async function uploadMedia(slug: string, fd: FormData): Promise<Result & { url?: string; note?: string }> {
   try {
     const { shop } = await ctx(slug, "catalog");
-    const file = fd.get("file");
+    let file = fd.get("file");
     if (!(file instanceof File) || !file.size) throw new Error("ไม่พบไฟล์");
     const kind = file.name.toLowerCase().endsWith(".glb") ? "glb" : "image";
     if (file.size > LIMIT[kind]) throw new Error(`${file.name} ใหญ่เกิน ${LIMIT[kind] / 1e6}MB`);
-    return { ok: true, url: await saveUpload(shop.id, file) };
+    let note: string | undefined;
+    if (kind === "glb") {
+      // บีบอัดอัตโนมัติ (meshopt + WebP) ก่อนเก็บ
+      const mb = (n: number) => `${(n / 1e6).toFixed(n < 1e5 ? 2 : 1)}MB`;
+      try {
+        const out = await optimizeGlb(new Uint8Array(await file.arrayBuffer()));
+        if (out.byteLength < file.size) note = `บีบอัด ${mb(file.size)} → ${mb(out.byteLength)}`;
+        file = new File([out as BlobPart], file.name, { type: "model/gltf-binary" });
+      } catch (e) {
+        console.warn("[glb] optimize failed", e instanceof Error ? e.message : e);
+        note = "บีบอัดไม่สำเร็จ ใช้ไฟล์เดิม";
+      }
+      if (file.size > 2e6) note = `${note ? note + " · " : ""}⚠️ ยังใหญ่กว่างบ 2MB — ลดจำนวน polygon ใน Blender`;
+    }
+    return { ok: true, url: await saveUpload(shop.id, file), note };
   } catch (e) { return fail(e); }
 }
 
@@ -403,5 +418,27 @@ export async function createShop(raw: unknown): Promise<Result & { slug?: string
     });
     updateTag("shops");
     return { ok: true, slug: d.slug };
+  } catch (e) { return fail(e); }
+}
+
+/* ---------- ใช้แต้มแลกส่วนลด (แคชเชียร์ยืนยันตัวลูกค้าที่เคาน์เตอร์) ---------- */
+export async function redeemPoints(slug: string, orderId: string): Promise<Result> {
+  try {
+    const { shop, db } = await ctx(slug, "orders");
+    const used = await db.transaction(async (tx) => {
+      const [o] = await tx.select().from(s.orders).where(and(eq(s.orders.id, orderId), eq(s.orders.shopId, shop.id)));
+      if (!o || ["completed", "cancelled"].includes(o.status) || o.pointsUsed > 0 || !o.customerPhone) throw new Error("ใช้แต้มกับบิลนี้ไม่ได้");
+      const [m] = await tx.select().from(s.customers).where(and(eq(s.customers.shopId, shop.id), eq(s.customers.phone, o.customerPhone)));
+      const n = redeemable(m?.points ?? 0, o.total);
+      if (n <= 0) throw new Error("แต้มไม่พอ (ขั้นต่ำ 10 แต้ม)");
+      const r = await tx.update(s.customers).set({ points: sql`${s.customers.points} - ${n}` })
+        .where(and(eq(s.customers.id, m.id), sql`${s.customers.points} >= ${n}`)).returning({ id: s.customers.id });
+      if (!r.length) throw new Error("แต้มไม่พอ");
+      await tx.update(s.orders).set({ pointsUsed: n, discount: sql`${s.orders.discount} + ${n * POINT_VALUE}`, total: sql`${s.orders.total} - ${n * POINT_VALUE}` })
+        .where(eq(s.orders.id, o.id));
+      return { n, status: o.status, code: o.code };
+    });
+    await publish({ type: "order", shopId: shop.id, orderId, status: used.status, code: used.code });
+    return { ok: true };
   } catch (e) { return fail(e); }
 }

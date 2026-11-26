@@ -72,9 +72,11 @@ npm run dev        # http://localhost:3000  (สร้าง DB + ข้อม�
 - **เข้ารหัส token LINE** ในฐานข้อมูล (AES-256-GCM)
 - **เลขออเดอร์ไม่ซ้ำ** แม้สั่งพร้อมกัน (unique + retry)
 - Security headers, `/api/health`, แยก connection สำหรับ realtime บน pooler
+- **บีบอัดไฟล์ 3D อัตโนมัติ** ตอนอัปโหลด (meshopt + texture WebP ≤1024px) คงชื่อ `opt_*`/material ไว้ · ตัวอย่าง 2.8MB → 0.9MB
+- **ใช้แต้มแลกส่วนลด** ที่เคาน์เตอร์ (แคชเชียร์ยืนยันตัวลูกค้า): 10 แต้ม = ฿5 ลดได้ไม่เกินครึ่งบิล ครั้งเดียวต่อบิล
 
 ## Production
 ดู [docs/DEPLOY.md](docs/DEPLOY.md)
 
 ## ถัดไป (ข้อเสนอ)
-P1.5 บีบอัด GLB อัตโนมัติ (gltf-transform) + ย้ายไฟล์ไป Supabase Storage · P2.5 ฉากสแกนร้านจริง (Gaussian Splat) · ใช้แต้มแลกส่วนลด · AR Android สำหรับโมเดลสำเร็จรูป
+P1.5 บีบอัด GLB อัตโนมัติ (gltf-transform) + ย้ายไฟล์ไป Supabase Storage · P2.5 ฉากสแกนร้านจริง (Gaussian Splat) · AR Android สำหรับโมเดลสำเร็จรูป

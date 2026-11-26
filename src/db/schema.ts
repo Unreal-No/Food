@@ -109,7 +109,8 @@ export const orders = pgTable("orders", {
   customerPhone: text("customer_phone").notNull().default(""),
   note: text("note").notNull().default(""),
   status: text("status").$type<OrderStatus>().notNull().default("pending_payment"),
-  discount: integer("discount").notNull().default(0),
+  discount: integer("discount").notNull().default(0), // คูปอง + แต้ม
+  pointsUsed: integer("points_used").notNull().default(0),
   couponCode: text("coupon_code").notNull().default(""),
   total: integer("total").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

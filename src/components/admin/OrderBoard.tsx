@@ -1,5 +1,5 @@
 "use client";
-import { setOrderStatus } from "@/app/admin/actions";
+import { redeemPoints, setOrderStatus } from "@/app/admin/actions";
 import { baht } from "@/lib/pricing";
 import { NEXT_STATUS, STATUS_LABEL } from "@/lib/status";
 import type { OrderStatus } from "@/db/schema";
@@ -7,7 +7,7 @@ import { btnDanger, btnPrimary, useAction } from "./ui";
 
 type Order = {
   id: string; code: string; status: OrderStatus; channel: string; payment: string; tableCode: string; customerName: string;
-  customerPhone: string; note: string; total: number; createdAt: Date;
+  customerPhone: string; note: string; total: number; createdAt: Date; memberPoints: number; pointsUsed: number;
   items: { id: string; name: string; variantName: string; options: { name: string }[]; qty: number }[];
 };
 
@@ -39,6 +39,11 @@ function OrderCard({ o, slug }: { o: Order; slug: string }) {
           <li key={i.id}><b>{i.qty}×</b> {i.name} <span className="text-stone-500">{[i.variantName, ...i.options.map((x) => x.name)].filter(Boolean).join(" · ")}</span></li>
         ))}
         {o.note && <li className="rounded-lg bg-amber-50 px-2 py-1 text-xs text-amber-900">📝 {o.note}</li>}
+        {o.pointsUsed > 0 && <li className="text-xs text-emerald-700">⭐ ใช้ {o.pointsUsed} แต้ม (−{baht(o.pointsUsed * 50)})</li>}
+        {o.pointsUsed === 0 && o.memberPoints >= 10 && !["completed", "cancelled"].includes(o.status) && (
+          <li><button disabled={pending} onClick={() => confirm(`ลูกค้าเบอร์ ${o.customerPhone} มี ${o.memberPoints} แต้ม\nยืนยันตัวตนแล้ว ใช้แต้มลดบิลนี้?`) && run(() => redeemPoints(slug, o.id))}
+            className="rounded-lg bg-amber-100 px-2 py-1 text-xs font-medium text-amber-900 hover:bg-amber-200">⭐ ใช้แต้มลด (มี {o.memberPoints})</button></li>
+        )}
       </ul>
       <div className="flex items-center justify-between gap-2 border-t border-black/5 pt-3">
         <span className="font-semibold">{baht(o.total)}</span>

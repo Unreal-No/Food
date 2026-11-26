@@ -84,6 +84,7 @@ export function MediaEditor({ slug, media, onChange, emoji, previews }: {
 }) {
   const [busy, setBusy] = useState("");
   const [err, setErr] = useState("");
+  const [note, setNote] = useState("");
   const [pv, setPv] = useState(0);
   const kind: Kind = media?.type ?? "none";
 
@@ -95,6 +96,7 @@ export function MediaEditor({ slug, media, onChange, emoji, previews }: {
       const fd = new FormData(); fd.set("file", f);
       const r = await uploadMedia(slug, fd);
       if (!r.ok || !r.url) { setErr(r.ok ? "อัปโหลดไม่สำเร็จ" : r.error); setBusy(""); return null; }
+      if (r.note) setNote(r.note);
       urls.push(r.url);
     }
     setBusy("");
@@ -106,9 +108,9 @@ export function MediaEditor({ slug, media, onChange, emoji, previews }: {
         const files = [...(e.target.files ?? [])].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
         e.target.value = "";
         if (!files.length) return;
-        const big = files.find((f) => f.name.endsWith(".glb") && f.size > 2e6);
+        setNote("");
         const urls = await upload(files);
-        if (urls) { cb(urls, files); if (big) setErr(`⚠️ ${big.name} ${(big.size / 1e6).toFixed(1)}MB เกินงบ 2MB — แนะนำบีบอัดด้วย gltf-transform (meshopt + ktx2)`); }
+        if (urls) cb(urls, files);
       }} />
   );
 
@@ -168,6 +170,7 @@ export function MediaEditor({ slug, media, onChange, emoji, previews }: {
           </div>
         )}
         {busy && <p className="text-xs text-stone-500">{busy}</p>}
+        {note && <p className="text-xs text-emerald-700">✓ {note}</p>}
         {err && <p className="text-xs text-red-600">{err}</p>}
       </div>
 

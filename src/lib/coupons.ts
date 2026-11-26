@@ -29,3 +29,6 @@ export async function claimCoupon(tx: Tx, couponId: string) {
 }
 
 export const pointsFor = (total: number) => Math.floor(total / 1000); // 1 แต้ม / ฿10
+export const POINT_VALUE = 50; // 1 แต้ม = 50 สตางค์ (10 แต้ม = ฿5)
+/** แต้มที่ใช้ได้กับบิลนี้: ทีละ 10 แต้ม ลดได้ไม่เกินครึ่งหนึ่งของยอด */
+export const redeemable = (points: number, total: number) => Math.floor(Math.min(points, Math.floor(total / 2 / POINT_VALUE)) / 10) * 10;
