@@ -16,7 +16,8 @@ export type ShopHours = { open: string; close: string; days: number[] }; // days
 // สื่อหลักของสินค้า: preset = โมเดล 3D สำเร็จรูป (ไม่ต้องมีไฟล์), glb = ไฟล์ 3D, turntable = ภาพหมุน 360°
 export type Media =
   | { type: "preset"; preset: string; params?: Record<string, string>; show?: string[] }
-  | { type: "glb"; url: string }
+  // flat = วางราบ (โมเดลจากภาพถ่ายมุมบน) · hide = ชื่อ node ที่ซ่อน · nodes = รายชื่อ node (ให้หลังบ้านเลือก) · poster = รูปบนการ์ด
+  | { type: "glb"; url: string; flat?: boolean; hide?: string[]; nodes?: string[]; poster?: string }
   | { type: "turntable"; frames: string[] }
   | { type: "photo"; url: string };
 // ผลต่อภาพ 3D เมื่อเลือก variant/option: เปลี่ยน preset, สี (params / ชื่อ material), แสดง/ซ่อนชิ้นส่วน (ชื่อ node), ขนาด

@@ -32,7 +32,7 @@ function ProductCard({ p, onOpen, i }: { p: CatalogProduct; onOpen: () => void; 
       className="group relative animate-rise rounded-[28px] bg-card p-2.5 text-left shadow-[0_1px_2px_rgba(0,0,0,0.06)] ring-1 ring-black/5 transition-[transform,box-shadow] duration-300 will-change-transform hover:shadow-[0_24px_48px_-16px_rgba(0,0,0,0.25)] disabled:opacity-60"
     >
       <div className="relative rounded-[22px]">
-        <ProductStage emoji={p.emoji} image={p.media[0]?.type === "photo" ? p.media[0].url : p.media[0]?.type === "turntable" ? p.media[0].frames[0] : undefined} />
+        <ProductStage emoji={p.emoji} image={p.media[0]?.type === "photo" ? p.media[0].url : p.media[0]?.type === "turntable" ? p.media[0].frames[0] : p.media[0]?.type === "glb" ? p.media[0].poster : undefined} />
         {p.badge && <span className="absolute left-2.5 top-2.5 rounded-full bg-brand px-2.5 py-0.5 text-xs font-medium text-card">{p.badge}</span>}
         {p.media[0] && <span className="absolute right-2.5 top-2.5 rounded-full bg-card/85 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-ink/70 backdrop-blur">{has3D(p.media[0]) ? "3D" : p.media[0].type === "turntable" ? "360°" : "📷"}</span>}
         {sold && <span className="absolute inset-0 grid place-items-center rounded-[22px] bg-card/60 font-display text-lg font-semibold">หมดแล้ว</span>}

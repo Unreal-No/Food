@@ -91,26 +91,28 @@ export function MediaEditor({ slug, media, onChange, emoji, previews }: {
   const upload = async (files: File[]) => {
     setErr("");
     const urls: string[] = [];
+    let nodes: string[] | undefined;
     for (const [i, f] of files.entries()) {
       setBusy(`กำลังอัปโหลด ${i + 1}/${files.length}`);
       const fd = new FormData(); fd.set("file", f);
       const r = await uploadMedia(slug, fd);
       if (!r.ok || !r.url) { setErr(r.ok ? "อัปโหลดไม่สำเร็จ" : r.error); setBusy(""); return null; }
       if (r.note) setNote(r.note);
+      if (r.nodes) nodes = r.nodes;
       urls.push(r.url);
     }
     setBusy("");
-    return urls;
+    return { urls, nodes };
   };
-  const pick = (accept: string, multiple: boolean, cb: (urls: string[], files: File[]) => void) => (
+  const pick = (accept: string, multiple: boolean, cb: (urls: string[], files: File[], nodes?: string[]) => void) => (
     <input type="file" accept={accept} multiple={multiple} className="text-xs file:mr-2 file:rounded-lg file:border-0 file:bg-stone-900 file:px-3 file:py-2 file:text-white"
       onChange={async (e) => {
         const files = [...(e.target.files ?? [])].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
         e.target.value = "";
         if (!files.length) return;
         setNote("");
-        const urls = await upload(files);
-        if (urls) cb(urls, files);
+        const up = await upload(files);
+        if (up) cb(up.urls, files, up.nodes);
       }} />
   );
 
@@ -152,8 +154,29 @@ export function MediaEditor({ slug, media, onChange, emoji, previews }: {
         )}
         {media?.type === "glb" && (
           <div className="space-y-2 text-xs text-stone-600">
-            {pick(".glb", false, ([url]) => onChange({ type: "glb", url }))}
+            {pick(".glb", false, ([url], _f, nodes) => onChange({ type: "glb", url, nodes, flat: media.flat, poster: media.poster }))}
             {media.url && <p className="truncate">✓ {media.url}</p>}
+            {media.url && (
+              <div className="space-y-2 rounded-xl bg-stone-50 p-3">
+                <label className="flex items-center gap-2"><input type="checkbox" checked={!!media.flat} onChange={(e) => onChange({ ...media, flat: e.target.checked })} />
+                  วางราบบนโต๊ะ <span className="text-stone-400">(โมเดลจากภาพถ่ายมุมบน)</span></label>
+                {(media.nodes?.filter((n) => !n.startsWith("opt_")).length ?? 0) > 1 && (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span>ซ่อนชิ้นส่วน:</span>
+                    {media.nodes!.filter((n) => !n.startsWith("opt_")).map((n) => {
+                      const off = media.hide?.includes(n);
+                      return <button key={n} type="button" onClick={() => onChange({ ...media, hide: off ? media.hide!.filter((x) => x !== n) : [...(media.hide ?? []), n] })}
+                        className={`${chip} ${off ? "bg-red-50 text-red-600 line-through ring-red-200" : "bg-white ring-black/10"}`}>{n}</button>;
+                    })}
+                  </div>
+                )}
+                <div className="flex flex-wrap items-center gap-2">
+                  <span>รูปปกบนการ์ดเมนู:</span>
+                  {pick("image/*", false, ([poster]) => onChange({ ...media, poster }))}
+                  {media.poster && <button type="button" className="text-red-600 underline" onClick={() => onChange({ ...media, poster: undefined })}>ลบรูปปก</button>}
+                </div>
+              </div>
+            )}
             <p className="text-stone-500">ตั้งชื่อ node ขึ้นต้น <code>opt_</code> (เช่น <code>opt_ice</code>) เพื่อให้ตัวเลือกสั่งแสดง/ซ่อนได้ · ตั้งชื่อ material ให้ตรงกับคีย์สี เพื่อเปลี่ยนสีตาม variant</p>
           </div>
         )}

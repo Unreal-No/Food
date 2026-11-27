@@ -9,7 +9,7 @@ export function resolveVisual(media: Media | undefined, layers: Visual[]): Resol
     preset: media?.type === "preset" ? media.preset : undefined,
     params: media?.type === "preset" ? { ...media.params } : {},
     parts: new Set(media?.type === "preset" ? media.show ?? [] : []),
-    hidden: new Set(), scale: 1,
+    hidden: new Set(media?.type === "glb" ? media.hide ?? [] : []), scale: 1,
   };
   for (const v of layers) {
     if (v.preset) r.preset = v.preset;

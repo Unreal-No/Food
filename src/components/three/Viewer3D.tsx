@@ -11,25 +11,33 @@ import { MODELS } from "./models";
 import { ArButton } from "./ArButton";
 
 /** GLB: node ชื่อขึ้นต้น "opt_" ซ่อนไว้จนกว่าจะถูก show · params จับคู่กับชื่อ material */
-export function Glb({ url, r }: { url: string; r: Resolved }) {
+/** ใช้ material ของตัวเอง (ไม่แก้ตัวที่ cache ร่วมกัน) */
+function own(o: THREE.Mesh) {
+  const m = o.material as THREE.MeshStandardMaterial;
+  if (!m.userData.cloned) { o.material = m.clone(); (o.material as THREE.Material).userData.cloned = true; }
+  return o.material as THREE.MeshStandardMaterial;
+}
+
+export function Glb({ url, r, flat }: { url: string; r: Resolved; flat?: boolean }) {
   const { scene } = useGLTF(url, false, true);
   const root = useMemo(() => scene.clone(true), [scene]);
   useEffect(() => {
     root.traverse((o) => {
       if (o.name.startsWith("opt_")) o.visible = r.parts.has(o.name.slice(4)) || r.parts.has(o.name);
-      if (r.hidden.has(o.name)) o.visible = false;
+      // GLTFLoader แปลงชื่อ node (เว้นวรรค → _) จึงเทียบทั้งชื่อเดิมและชื่อที่แปลงแล้ว
+      if ([...r.hidden].some((h) => h === o.name || THREE.PropertyBinding.sanitizeNodeName(h) === o.name)) o.visible = false;
       const m = (o as THREE.Mesh).material as THREE.MeshStandardMaterial | undefined;
-      if (m && !Array.isArray(m) && r.params[m.name]) {
-        if (!m.userData.cloned) { (o as THREE.Mesh).material = m.clone(); ((o as THREE.Mesh).material as THREE.Material).userData.cloned = true; }
-        ((o as THREE.Mesh).material as THREE.MeshStandardMaterial).color.set(r.params[m.name]);
-      }
+      if (!m || Array.isArray(m)) return;
+      if (r.params[m.name]) own(o as THREE.Mesh).color.set(r.params[m.name]);
+      // รูปตัดพื้นหลัง (texture มี alpha + BLEND) → cutout คม เรียงความลึกถูก
+      if (m.map && m.transparent) { const x = own(o as THREE.Mesh); x.transparent = false; x.alphaTest = 0.5; x.depthWrite = true; }
     });
   }, [root, r]);
-  return <Resize scale={2.2}><primitive object={root} /></Resize>;
+  return <Resize scale={flat ? 3.2 : 2.2}><group rotation-x={flat ? -Math.PI / 2 : 0}><primitive object={root} /></group></Resize>;
 }
 
 function Model({ media, r }: { media: Media; r: Resolved }) {
-  if (media.type === "glb") return <Center top><Glb url={media.url} r={r} /></Center>;
+  if (media.type === "glb") return <Center top><Glb url={media.url} r={r} flat={media.flat} /></Center>;
   const preset = r.preset && MODELS[r.preset] ? r.preset : "cup";
   const Comp = MODELS[preset];
   return <Comp p={presetParams(preset, r.params)} on={activeParts(preset, r.parts, r.hidden)} />;
@@ -42,6 +50,8 @@ function Scaled({ s, children }: { s: number; children: React.ReactNode }) {
 }
 
 export default function Viewer3D({ media, resolved, title = "" }: { media: Media; resolved: Resolved; title?: string }) {
+  // โมเดลจากภาพถ่ายมุมบน (วางราบ): มองจากด้านบนเป็นหลัก ไม่ให้หมุนจนเห็นด้านข้างแบนๆ
+  const flat = media.type === "glb" && !!media.flat;
   const [dpr, setDpr] = useState(1.75);
   const [touched, setTouched] = useState(false);
   const controls = useRef<OrbitImpl>(null);
@@ -50,7 +60,7 @@ export default function Viewer3D({ media, resolved, title = "" }: { media: Media
 
   return (
     <div className="relative size-full">
-      <Canvas dpr={dpr} camera={{ position: [3.6, 3.1, 4.6], fov: 32 }} frameloop={reduced ? "demand" : "always"} gl={{ antialias: true, alpha: true }}>
+      <Canvas dpr={dpr} camera={{ position: flat ? [0, 4.6, 3.0] : [3.6, 3.1, 4.6], fov: 32 }} frameloop={reduced ? "demand" : "always"} gl={{ antialias: true, alpha: true }}>
         <PerformanceMonitor onDecline={() => setDpr(1)} />
         <ambientLight intensity={0.35} />
         <directionalLight position={[3, 6, 3]} intensity={1.4} />
@@ -64,8 +74,8 @@ export default function Viewer3D({ media, resolved, title = "" }: { media: Media
         </Suspense>
         <ContactShadows position-y={-0.001} opacity={0.42} blur={2.6} scale={9} far={3.5} resolution={512} />
         <OrbitControls
-          ref={controls} makeDefault enablePan={false} enableDamping target={[0, 0.95, 0]}
-          minDistance={3} maxDistance={10} minPolarAngle={0.15} maxPolarAngle={Math.PI / 2 - 0.04}
+          ref={controls} makeDefault enablePan={false} enableDamping target={flat ? [0, 0.05, 0] : [0, 0.95, 0]}
+          minDistance={flat ? 2 : 3} maxDistance={10} minPolarAngle={flat ? 0 : 0.15} maxPolarAngle={flat ? 1.05 : Math.PI / 2 - 0.04}
           autoRotate={!touched && !reduced} autoRotateSpeed={1.6} onStart={() => setTouched(true)}
         />
       </Canvas>

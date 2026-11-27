@@ -224,7 +224,7 @@ function ProductSpot({ product, at, onSelect, hoverRef }: { product: SceneProduc
   const m = product.media, r = resolveVisual(m, []);
   const model = m?.type === "preset" && MODELS[m.preset]
     ? (() => { const C = MODELS[m.preset]; return <group scale={0.12}><C p={presetParams(m.preset, r.params)} on={activeParts(m.preset, r.parts, r.hidden)} /></group>; })()
-    : m?.type === "glb" ? <Suspense fallback={null}><group scale={0.14}><Glb url={m.url} r={r} /></group></Suspense>
+    : m?.type === "glb" ? <Suspense fallback={null}><group scale={0.14}><Glb url={m.url} r={r} flat={m.flat} /></group></Suspense>
     : m?.type === "photo" || m?.type === "turntable" ? <>
         <mesh position-y={0.01}><cylinderGeometry args={[0.1, 0.12, 0.02, 24]} /><meshStandardMaterial color="#d6d3d1" /></mesh>
         <Suspense fallback={<Emoji emoji={product.emoji} />}><PhotoStand url={m.type === "photo" ? m.url : m.frames[0]} /></Suspense>

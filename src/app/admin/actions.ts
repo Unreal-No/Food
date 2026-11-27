@@ -26,7 +26,7 @@ const Parts = z.array(z.string().max(30)).max(20).optional();
 const VisualSchema = z.object({ preset: z.string().max(20).optional(), params: Params, show: Parts, hide: Parts, scale: z.number().min(0.5).max(2).optional() });
 const MediaSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("preset"), preset: z.string().max(20), params: Params, show: Parts }),
-  z.object({ type: z.literal("glb"), url: mediaUrl }),
+  z.object({ type: z.literal("glb"), url: mediaUrl, flat: z.boolean().optional(), hide: z.array(z.string().max(80)).max(50).optional(), nodes: z.array(z.string().max(80)).max(100).optional(), poster: mediaUrl.optional() }),
   z.object({ type: z.literal("turntable"), frames: z.array(mediaUrl).min(2, "ภาพหมุนต้องมีอย่างน้อย 2 เฟรม").max(72) }),
   z.object({ type: z.literal("photo"), url: mediaUrl }),
 ]);
@@ -113,28 +113,29 @@ export async function deleteProduct(slug: string, id: string): Promise<Result> {
 
 /* ---------- อัปโหลดสื่อ (ทีละไฟล์) ---------- */
 const LIMIT: Record<string, number> = { glb: 15e6, image: 3e6 };
-export async function uploadMedia(slug: string, fd: FormData): Promise<Result & { url?: string; note?: string }> {
+export async function uploadMedia(slug: string, fd: FormData): Promise<Result & { url?: string; note?: string; nodes?: string[] }> {
   try {
     const { shop } = await ctx(slug, "catalog");
     let file = fd.get("file");
     if (!(file instanceof File) || !file.size) throw new Error("ไม่พบไฟล์");
     const kind = file.name.toLowerCase().endsWith(".glb") ? "glb" : "image";
     if (file.size > LIMIT[kind]) throw new Error(`${file.name} ใหญ่เกิน ${LIMIT[kind] / 1e6}MB`);
-    let note: string | undefined;
+    let note: string | undefined, nodes: string[] | undefined;
     if (kind === "glb") {
       // บีบอัดอัตโนมัติ (meshopt + WebP) ก่อนเก็บ
       const mb = (n: number) => `${(n / 1e6).toFixed(n < 1e5 ? 2 : 1)}MB`;
       try {
-        const out = await optimizeGlb(new Uint8Array(await file.arrayBuffer()));
-        if (out.byteLength < file.size) note = `บีบอัด ${mb(file.size)} → ${mb(out.byteLength)}`;
-        file = new File([out as BlobPart], file.name, { type: "model/gltf-binary" });
+        const r = await optimizeGlb(new Uint8Array(await file.arrayBuffer()));
+        nodes = r.nodes;
+        if (r.bytes.byteLength < file.size) note = `บีบอัด ${mb(file.size)} → ${mb(r.bytes.byteLength)}${r.tris > 100_000 ? ` · ลดสามเหลี่ยมจาก ${Math.round(r.tris / 1000)}k` : ""}`;
+        file = new File([r.bytes as BlobPart], file.name, { type: "model/gltf-binary" });
       } catch (e) {
         console.warn("[glb] optimize failed", e instanceof Error ? e.message : e);
         note = "บีบอัดไม่สำเร็จ ใช้ไฟล์เดิม";
       }
       if (file.size > 2e6) note = `${note ? note + " · " : ""}⚠️ ยังใหญ่กว่างบ 2MB — ลดจำนวน polygon ใน Blender`;
     }
-    return { ok: true, url: await saveUpload(shop.id, file), note };
+    return { ok: true, url: await saveUpload(shop.id, file), note, nodes };
   } catch (e) { return fail(e); }
 }
 
