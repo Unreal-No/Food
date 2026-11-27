@@ -68,6 +68,8 @@ const DATA: SeedShop[] = [
         variants: [["หมูสับ", 60], ["ไก่", 60, { params: { topping: "#c89a62" } }], ["หมูกรอบ", 70, { params: { topping: "#b5652b" } }], ["กุ้ง", 80, { params: { topping: "#f08a5d" } }]] },
       { cat: 0, name: "ข้าวผัด", emoji: "🍚", desc: "ข้าวหอมมะลิผัดไข่ เม็ดร่วนสวย", price: 60, groups: [1, 2], media: { type: "preset", preset: "plate", params: { rice: "#efcf7d", topping: "#d9a066" }, show: ["cucumber"] },
         variants: [["หมู", 60], ["ปู", 90, { params: { topping: "#f4a261" } }]] },
+      { cat: 0, name: "กะเพรากุ้ง ไข่ดาว", emoji: "🦐", desc: "กุ้งตัวโต ผัดกะเพราหมูสับ ไข่ดาวขอบกรอบ", price: 89, badge: "รูปจริง", groups: [0, 2], media: { type: "photo", url: "/demo/kaprao-shrimp.webp" } },
+      { cat: 0, name: "กะเพราทะเล ไข่ดาวกรอบ", emoji: "🦑", desc: "กุ้ง ปลาหมึก ผัดพริกสด ไข่ดาวทอดกรอบ", price: 99, badge: "แนะนำ", groups: [0, 2], media: { type: "photo", url: "/demo/kaprao-seafood.webp" } },
       { cat: 0, name: "ผัดไทยกุ้งสด", emoji: "🍤", desc: "เส้นจันท์ ซอสเคี่ยวเอง", price: 80, groups: [0, 2], media: { type: "preset", preset: "plate", params: { rice: "#e3a869", topping: "#f08a5d" } } },
       { cat: 1, name: "ต้มยำกุ้งน้ำข้น", emoji: "🍲", desc: "กุ้งแม่น้ำ น้ำพริกเผาสูตรบ้าน", price: 150, badge: "แนะนำ", groups: [0], media: { type: "preset", preset: "bowl" } },
       { cat: 2, name: "ชามะนาว", emoji: "🍋", desc: "เปรี้ยวหวานสดชื่น", price: 35, media: { type: "preset", preset: "glass", params: { liquid: "#c9711e", slice: "#d9f99d" }, show: ["ice", "straw", "slice"] } },

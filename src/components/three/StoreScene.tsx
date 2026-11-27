@@ -1,7 +1,7 @@
 "use client";
 import { Suspense, useMemo, useRef, useState, useSyncExternalStore, type MutableRefObject, type RefObject } from "react";
 import { Canvas, useFrame, type ThreeElements, type ThreeEvent } from "@react-three/fiber";
-import { Billboard, ContactShadows, Environment, Lightformer, PerformanceMonitor } from "@react-three/drei";
+import { Billboard, ContactShadows, Environment, Lightformer, PerformanceMonitor, useTexture } from "@react-three/drei";
 import * as THREE from "three";
 import type { Media, ShopTheme } from "@/db/schema";
 import type { Fixture, Layout, V3 } from "@/lib/scene";
@@ -197,6 +197,22 @@ function Emoji({ emoji }: { emoji: string }) {
   return <Billboard position-y={0.22}><mesh><planeGeometry args={[0.26, 0.26]} /><meshBasicMaterial map={map} transparent /></mesh></Billboard>;
 }
 
+const srgb = (t: THREE.Texture | THREE.Texture[]) => { (Array.isArray(t) ? t : [t]).forEach((x) => { x.colorSpace = THREE.SRGBColorSpace; }); };
+
+/** รูปจริงบนป้ายตั้งโต๊ะ (หันหาลูกค้าเสมอ) */
+function PhotoStand({ url }: { url: string }) {
+  const map = useTexture(url, srgb);
+  const img = map.image as { width?: number; height?: number } | undefined;
+  const aspect = img?.width && img?.height ? img.width / img.height : 1;
+  const h = 0.3, w = h * aspect;
+  return (
+    <Billboard position-y={0.2} lockX lockZ>
+      <mesh position-z={-0.006}><planeGeometry args={[w + 0.03, h + 0.03]} /><meshStandardMaterial color="#fafaf9" roughness={0.6} /></mesh>
+      <mesh><planeGeometry args={[w, h]} /><meshBasicMaterial map={map} toneMapped={false} /></mesh>
+    </Billboard>
+  );
+}
+
 function ProductSpot({ product, at, onSelect, hoverRef }: { product: SceneProduct; at: V3; onSelect?: (id: string) => void; hoverRef: MutableRefObject<Hover> }) {
   const g = useRef<THREE.Group>(null);
   useFrame((_, dt) => {
@@ -209,6 +225,10 @@ function ProductSpot({ product, at, onSelect, hoverRef }: { product: SceneProduc
   const model = m?.type === "preset" && MODELS[m.preset]
     ? (() => { const C = MODELS[m.preset]; return <group scale={0.12}><C p={presetParams(m.preset, r.params)} on={activeParts(m.preset, r.parts, r.hidden)} /></group>; })()
     : m?.type === "glb" ? <Suspense fallback={null}><group scale={0.14}><Glb url={m.url} r={r} /></group></Suspense>
+    : m?.type === "photo" || m?.type === "turntable" ? <>
+        <mesh position-y={0.01}><cylinderGeometry args={[0.1, 0.12, 0.02, 24]} /><meshStandardMaterial color="#d6d3d1" /></mesh>
+        <Suspense fallback={<Emoji emoji={product.emoji} />}><PhotoStand url={m.type === "photo" ? m.url : m.frames[0]} /></Suspense>
+      </>
     : <>
         <mesh position-y={0.04}><cylinderGeometry args={[0.13, 0.15, 0.08, 24]} /><meshStandardMaterial color="#f5f5f4" /></mesh>
         <Emoji emoji={product.emoji} />

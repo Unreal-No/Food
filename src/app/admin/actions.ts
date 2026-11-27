@@ -20,7 +20,7 @@ import type { OrderStatus } from "@/db/schema";
 type Result = { ok: true; id?: string } | { ok: false; error: string };
 const satang = z.number().min(0).max(1_000_000).transform((b) => Math.round(b * 100));
 const opt = z.uuid().optional();
-const mediaUrl = z.string().max(300).regex(/^(\/media\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.[a-z]{3,4}|https?:\/\/\S+)$/, "URL สื่อไม่ถูกต้อง");
+const mediaUrl = z.string().max(300).regex(/^(\/media\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.[a-z]{3,4}|\/demo\/[a-z0-9-]+\.(webp|jpg|png|glb)|https?:\/\/\S+)$/, "URL สื่อไม่ถูกต้อง");
 const Params = z.record(z.string().max(20), z.string().max(20)).optional();
 const Parts = z.array(z.string().max(30)).max(20).optional();
 const VisualSchema = z.object({ preset: z.string().max(20).optional(), params: Params, show: Parts, hide: Parts, scale: z.number().min(0.5).max(2).optional() });
